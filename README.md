@@ -10,6 +10,8 @@ Mobile-friendly browser prototype for tuning the LXE Ultra HDR gain-map style se
 
 Open `http://<machine-ip>:5177/` from another device on the same network or Tailnet.
 
+The server redirects root and static asset requests to a `?v=` URL derived from the local app file mtimes, and sends no-store cache headers. That keeps mobile Safari from holding onto stale UI builds while iterating.
+
 ## Current export behavior
 
 - `Export Ultra HDR` sends the image/settings to the local Python endpoint and saves a real Ultra HDR + ISO 21496 gain-map JPEG.
