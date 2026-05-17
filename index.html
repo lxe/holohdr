@@ -23,13 +23,21 @@
 
         <aside id="controlsPanel" class="controls-panel" aria-label="Adjustment controls">
           <div id="toolPanel" class="tool-panel">
-            <div class="tool-header">
-              <strong id="toolTitle">Look</strong>
-            </div>
-
             <div class="tool-section menu-section" data-section="menu">
-              <button id="menuOpen" class="menu-action" type="button">Open image</button>
-              <button id="menuClear" class="menu-action danger" type="button" disabled>Clear image</button>
+              <div class="file-actions">
+                <button id="menuOpen" class="menu-icon-action" type="button" aria-label="Open image">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 20h16M12 4v11M7 10l5 5 5-5" />
+                  </svg>
+                </button>
+                <button id="menuClear" class="menu-icon-action danger" type="button" aria-label="Clear image" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="section-label">Export</div>
               <div class="control-row compact">
                 <label for="exportSize">Size</label>
                 <select id="exportSize">

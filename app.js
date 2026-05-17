@@ -18,18 +18,6 @@ const sliders = [
   { key: "gainmapGamma", label: "Gamma", min: 0.1, max: 4, step: 0.01, group: "gamma" },
 ];
 
-const toolTitles = {
-  menu: "Menu",
-  look: "Look",
-  tone: "Tone",
-  color: "Color",
-  headroom: "Headroom",
-  threshold: "Threshold",
-  softness: "Softness",
-  power: "Power",
-  gamma: "Gamma",
-};
-
 const presets = {
   custom: null,
   vibrant: {
@@ -118,7 +106,6 @@ const emptyState = document.getElementById("emptyState");
 const imageMeta = document.getElementById("imageMeta");
 const controlsPanel = document.getElementById("controlsPanel");
 const toolPanel = document.getElementById("toolPanel");
-const toolTitle = document.getElementById("toolTitle");
 const presetSelect = document.getElementById("presetSelect");
 const sliderStacks = {
   tone: document.getElementById("toneSliderStack"),
@@ -282,7 +269,6 @@ function setControlsOpen(open) {
 }
 
 function setActiveTool(tool) {
-  toolTitle.textContent = toolTitles[tool] || "Adjust";
   document.querySelectorAll(".tool-button").forEach((button) => {
     button.classList.toggle("active", button.dataset.tool === tool);
   });
