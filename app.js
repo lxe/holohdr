@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517o";
+const STATIC_ASSET_VERSION = "20260517p";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -78,6 +78,15 @@ const sliders = [
     description: "Sets how bright the HDR layer is allowed to get. Higher values make highlights glow harder but can blow out uploads.",
   },
   {
+    key: "hdrBrightness",
+    label: "HDR brightness",
+    min: 1,
+    max: 3,
+    step: 0.01,
+    group: "brightness",
+    description: "Raises the whole HDR version of the image on HDR screens while leaving the normal SDR image unchanged.",
+  },
+  {
     key: "highlightThreshold",
     label: "Threshold",
     min: 0,
@@ -122,6 +131,7 @@ const neutralSettings = {
   sdrHighlights: 0,
   sdrSaturation: 1,
   hdrHeadroom: 1,
+  hdrBrightness: 1,
   highlightThreshold: 0.5,
   highlightSoftness: 0.5,
   highlightPower: 1,
@@ -141,6 +151,7 @@ const presets = {
     sdrHighlights: -0.12,
     sdrSaturation: 1.18,
     hdrHeadroom: 3.8,
+    hdrBrightness: 1,
     highlightThreshold: 0.26,
     highlightSoftness: 0.68,
     highlightPower: 0.78,
@@ -154,6 +165,7 @@ const presets = {
     sdrHighlights: -0.08,
     sdrSaturation: 1.14,
     hdrHeadroom: 4.2,
+    hdrBrightness: 1.02,
     highlightThreshold: 0.28,
     highlightSoftness: 0.62,
     highlightPower: 0.85,
@@ -167,6 +179,7 @@ const presets = {
     sdrHighlights: 0,
     sdrSaturation: 1,
     hdrHeadroom: 3,
+    hdrBrightness: 1,
     highlightThreshold: 0.55,
     highlightSoftness: 0.35,
     highlightPower: 1.25,
@@ -180,6 +193,7 @@ const presets = {
     sdrHighlights: -0.05,
     sdrSaturation: 1.08,
     hdrHeadroom: 3.6,
+    hdrBrightness: 1.02,
     highlightThreshold: 0.34,
     highlightSoftness: 0.52,
     highlightPower: 0.95,
@@ -193,6 +207,7 @@ const presets = {
     sdrHighlights: -0.1,
     sdrSaturation: 1.12,
     hdrHeadroom: 4.8,
+    hdrBrightness: 1.04,
     highlightThreshold: 0.24,
     highlightSoftness: 0.66,
     highlightPower: 0.76,
@@ -278,6 +293,7 @@ const sliderStacks = {
   highlights: document.getElementById("highlightsSliderStack"),
   color: document.getElementById("colorSliderStack"),
   headroom: document.getElementById("headroomSliderStack"),
+  brightness: document.getElementById("brightnessSliderStack"),
   threshold: document.getElementById("thresholdSliderStack"),
   softness: document.getElementById("softnessSliderStack"),
   power: document.getElementById("powerSliderStack"),
@@ -803,6 +819,7 @@ function makeAutoSettings(mode, analysis) {
     sdrHighlights: clamp(brightImage ? -0.06 - analysis.nearWhiteFraction * 1.2 : -Math.max(0, analysis.p95 - 0.88) * 0.55, -0.24, 0.04),
     sdrSaturation: clamp(1.04 + (0.26 - analysis.avgSat) * 0.24 + analysis.shadowSat * 0.12, 0.98, 1.18),
     hdrHeadroom: clamp(3.2 + (1 - analysis.brightFraction) * 0.8 - analysis.nearWhiteFraction * 5, 2.4, 4.2),
+    hdrBrightness: clamp(1.02 + (0.52 - analysis.p50) * 0.12 - analysis.nearWhiteFraction * 0.7, 1, 1.08),
     highlightThreshold: clamp(highStart, 0.24, 0.58),
     highlightSoftness: clamp(0.46 + analysis.brightFraction * 0.62 + (flatImage ? 0.08 : 0), 0.36, 0.68),
     highlightPower: clamp(1.04 + analysis.brightFraction * 0.55 - (flatImage ? 0.12 : 0), 0.82, 1.38),
@@ -819,11 +836,13 @@ function makeAutoSettings(mode, analysis) {
   if (mode === "vibrant") {
     settings.sdrSaturation += 0.09;
     settings.hdrSaturation += 0.05;
+    settings.hdrBrightness += 0.02;
     settings.sdrShadows += 0.04;
     settings.highlightThreshold -= 0.035;
     settings.gainmapGamma -= 0.08;
   } else if (mode === "social") {
     settings.hdrHeadroom -= 0.48;
+    settings.hdrBrightness -= 0.02;
     settings.highlightThreshold += 0.07;
     settings.highlightPower += 0.16;
     settings.highlightSoftness -= 0.04;
@@ -831,6 +850,7 @@ function makeAutoSettings(mode, analysis) {
     settings.hdrSaturation -= 0.04;
   } else if (mode === "glow") {
     settings.hdrHeadroom += 0.62;
+    settings.hdrBrightness += 0.06;
     settings.highlightThreshold -= 0.055;
     settings.highlightSoftness += 0.08;
     settings.highlightPower -= 0.18;
@@ -844,6 +864,7 @@ function makeAutoSettings(mode, analysis) {
     settings.sdrSaturation += 0.06;
     settings.sdrHighlights -= 0.035;
     settings.hdrHeadroom -= 0.22;
+    settings.hdrBrightness += 0.02;
   }
 
   return clampSettingsToSliderRanges(settings);
@@ -1123,6 +1144,8 @@ function hasHdrAdjustment(settings = state.settings) {
   return (
     Math.abs((settings.hdrHeadroom ?? neutralSettings.hdrHeadroom) - neutralSettings.hdrHeadroom) >
       NEUTRAL_SETTING_EPSILON ||
+    Math.abs((settings.hdrBrightness ?? neutralSettings.hdrBrightness) - neutralSettings.hdrBrightness) >
+      NEUTRAL_SETTING_EPSILON ||
     Math.abs((settings.hdrSaturation ?? neutralSettings.hdrSaturation) - neutralSettings.hdrSaturation) >
       NEUTRAL_SETTING_EPSILON
   );
@@ -1290,12 +1313,13 @@ function makeUltraHdrOptions(options = {}) {
 
 function getTargetHdrCapacity(settings = state.settings) {
   const headroomStops = Math.log2(Math.max(1, settings.hdrHeadroom ?? neutralSettings.hdrHeadroom));
+  const brightnessStops = Math.log2(Math.max(1, settings.hdrBrightness ?? neutralSettings.hdrBrightness));
   const hdrColor = settings.hdrSaturation ?? neutralSettings.hdrSaturation;
   const colorStops =
     Math.abs(hdrColor - neutralSettings.hdrSaturation) > NEUTRAL_SETTING_EPSILON
       ? Math.max(0.75, Math.log2(Math.max(1, hdrColor)))
       : 0;
-  return clamp(Math.max(headroomStops, colorStops), 0, 6);
+  return clamp(Math.max(headroomStops, brightnessStops, colorStops), 0, 6);
 }
 
 async function encodeUltraHdrBlob(input, options = {}) {
@@ -1394,6 +1418,7 @@ function fillSdrAndHdrBuffers(data, hdrBuffer, settings) {
   const softness = settings.highlightSoftness;
   const power = settings.highlightPower;
   const headroom = settings.hdrHeadroom;
+  const hdrBrightness = settings.hdrBrightness ?? neutralSettings.hdrBrightness;
   const hdrSat = settings.hdrSaturation;
   const gamma = settings.gainmapGamma;
 
@@ -1438,6 +1463,9 @@ function fillSdrAndHdrBuffers(data, hdrBuffer, settings) {
     hr = Math.max(0, hl + (hr - hl) * sat);
     hg = Math.max(0, hl + (hg - hl) * sat);
     hb = Math.max(0, hl + (hb - hl) * sat);
+    hr *= hdrBrightness;
+    hg *= hdrBrightness;
+    hb *= hdrBrightness;
 
     data[i] = Math.round(r * 255);
     data[i + 1] = Math.round(g * 255);
@@ -1481,6 +1509,7 @@ function processPixels(data, settings, mode) {
   const softness = settings.highlightSoftness;
   const power = settings.highlightPower;
   const headroom = settings.hdrHeadroom;
+  const hdrBrightness = settings.hdrBrightness ?? neutralSettings.hdrBrightness;
   const hdrSat = settings.hdrSaturation;
   const gamma = settings.gainmapGamma;
 
@@ -1525,6 +1554,9 @@ function processPixels(data, settings, mode) {
     hr = Math.max(0, hl + (hr - hl) * sat);
     hg = Math.max(0, hl + (hg - hl) * sat);
     hb = Math.max(0, hl + (hb - hl) * sat);
+    hr *= hdrBrightness;
+    hg *= hdrBrightness;
+    hb *= hdrBrightness;
 
     if (mode === "gain") {
       data[i] = Math.round(gainResponse * 255);
