@@ -27,8 +27,7 @@
               <div class="file-actions">
                 <button id="menuOpen" class="menu-icon-action" type="button" aria-label="Open image">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M3 7h7l2 2h9v10H3Z" />
-                    <path d="M8 14h8M12 10v8" />
+                    <path d="M12 5v14M5 12h14" />
                   </svg>
                 </button>
                 <button id="menuClear" class="menu-icon-action danger" type="button" aria-label="Clear image" disabled>
@@ -53,7 +52,6 @@
                 <button id="exportJpeg" type="button" disabled>JPEG</button>
                 <button id="exportGain" type="button" disabled>Gain</button>
               </div>
-              <p id="statusLine" class="status-line">Ready</p>
             </div>
 
             <div class="tool-section wand-section" data-section="wand">
@@ -109,7 +107,9 @@
                   <option value="custom">Custom</option>
                 </select>
               </div>
+            </div>
 
+            <div class="tool-section" data-section="preview">
               <div class="segmented" role="group" aria-label="Preview mode">
                 <button class="segment active" type="button" data-mode="hdr">HDR</button>
                 <button class="segment" type="button" data-mode="sdr">SDR</button>
@@ -144,6 +144,12 @@
               <button class="tool-button active" type="button" data-tool="look" aria-label="Look">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 3v18M4 8h16M7 16h10" />
+                </svg>
+              </button>
+              <button class="tool-button" type="button" data-tool="preview" aria-label="Preview">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                  <circle cx="12" cy="12" r="2.5" />
                 </svg>
               </button>
               <button class="tool-button" type="button" data-tool="tone" aria-label="Tone">

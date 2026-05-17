@@ -230,7 +230,6 @@ const sliderStacks = {
   power: document.getElementById("powerSliderStack"),
   gamma: document.getElementById("gammaSliderStack"),
 };
-const statusLine = document.getElementById("statusLine");
 const exportSize = document.getElementById("exportSize");
 const exportUltra = document.getElementById("exportUltra");
 const exportJpeg = document.getElementById("exportJpeg");
@@ -1149,6 +1148,5 @@ function nextFrame() {
   return new Promise((resolve) => requestAnimationFrame(resolve));
 }
 
-function setStatus(message) {
-  statusLine.textContent = message;
+function setStatus() {
 }
