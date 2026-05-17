@@ -472,12 +472,50 @@ input[type="range"]::-moz-range-thumb {
     gap: 8px;
   }
 
-  .tool-rail {
+  .tool-rail-shell {
     position: absolute;
     left: 8px;
     right: 8px;
     bottom: max(8px, env(safe-area-inset-bottom));
     height: 54px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: rgba(16, 16, 15, 0.9);
+    box-shadow: 0 16px 54px rgba(0, 0, 0, 0.48);
+    pointer-events: auto;
+    backdrop-filter: blur(22px) saturate(1.15);
+  }
+
+  .tool-rail-shell::before,
+  .tool-rail-shell::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    width: 30px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 140ms ease;
+  }
+
+  .tool-rail-shell::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(16, 16, 15, 0.96), rgba(16, 16, 15, 0));
+  }
+
+  .tool-rail-shell::after {
+    right: 0;
+    background: linear-gradient(270deg, rgba(16, 16, 15, 0.96), rgba(16, 16, 15, 0));
+  }
+
+  .tool-rail-shell.can-scroll-left::before,
+  .tool-rail-shell.can-scroll-right::after {
+    opacity: 1;
+  }
+
+  .tool-rail {
+    height: 100%;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -485,12 +523,7 @@ input[type="range"]::-moz-range-thumb {
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
-    border-radius: 14px;
-    background: rgba(16, 16, 15, 0.9);
-    box-shadow: 0 16px 54px rgba(0, 0, 0, 0.48);
-    pointer-events: auto;
     scrollbar-width: none;
-    backdrop-filter: blur(22px) saturate(1.15);
     -webkit-overflow-scrolling: touch;
   }
 
@@ -560,7 +593,7 @@ input[type="range"]::-moz-range-thumb {
     right: 7px;
   }
 
-  .tool-rail {
+  .tool-rail-shell {
     left: 7px;
     right: 7px;
   }

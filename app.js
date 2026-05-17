@@ -106,6 +106,8 @@ const emptyState = document.getElementById("emptyState");
 const imageMeta = document.getElementById("imageMeta");
 const controlsPanel = document.getElementById("controlsPanel");
 const toolPanel = document.getElementById("toolPanel");
+const toolRailShell = document.getElementById("toolRailShell");
+const toolRail = document.getElementById("toolRail");
 const presetSelect = document.getElementById("presetSelect");
 const sliderStacks = {
   tone: document.getElementById("toneSliderStack"),
@@ -127,6 +129,7 @@ const previewCtx = previewCanvas.getContext("2d", { willReadFrequently: true });
 
 buildControls();
 applySettingsToControls();
+updateRailFades();
 restoreSession();
 
 fileInput.addEventListener("change", async (event) => {
@@ -160,6 +163,8 @@ exportSize.addEventListener("change", saveSessionSoon);
 emptyState.addEventListener("click", openImagePicker);
 menuOpen.addEventListener("click", openImagePicker);
 menuClear.addEventListener("click", clearImage);
+toolRail.addEventListener("scroll", updateRailFades, { passive: true });
+window.addEventListener("resize", updateRailFades);
 document.querySelectorAll(".tool-button").forEach((button) => {
   button.addEventListener("click", () => {
     const wasOpen = controlsPanel.classList.contains("open");
@@ -167,6 +172,7 @@ document.querySelectorAll(".tool-button").forEach((button) => {
     setActiveTool(button.dataset.tool);
     button.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     setControlsOpen(!(wasOpen && wasActive));
+    window.setTimeout(updateRailFades, 180);
   });
 });
 previewCanvas.addEventListener("click", () => {
@@ -266,6 +272,12 @@ function setControlsOpen(open) {
   controlsPanel.classList.toggle("open", open);
   const mobile = window.matchMedia("(max-width: 860px)").matches;
   toolPanel.setAttribute("aria-hidden", String(!open && mobile));
+}
+
+function updateRailFades() {
+  const maxScroll = toolRail.scrollWidth - toolRail.clientWidth;
+  toolRailShell.classList.toggle("can-scroll-left", toolRail.scrollLeft > 2);
+  toolRailShell.classList.toggle("can-scroll-right", toolRail.scrollLeft < maxScroll - 2);
 }
 
 function setActiveTool(tool) {
