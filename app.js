@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517j";
+const STATIC_ASSET_VERSION = "20260517k";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -130,6 +130,7 @@ const neutralSettings = {
 };
 
 const presets = {
+  reset: neutralSettings,
   custom: null,
   vibrant: {
     sdrExposure: 0.12,
@@ -199,6 +200,7 @@ const presets = {
 };
 
 const presetLabels = {
+  reset: "Reset",
   vibrant: "Vibrant recovery",
   holosomnia: "Holosomnia",
   instagram_safe: "Instagram safe",
@@ -206,7 +208,7 @@ const presetLabels = {
   instagram_blast: "Instagram blast",
   custom: "Custom",
 };
-const presetOrder = ["custom", "vibrant", "holosomnia", "instagram_safe", "instagram_bright", "instagram_blast"];
+const presetOrder = ["custom", "reset", "vibrant", "holosomnia", "instagram_safe", "instagram_bright", "instagram_blast"];
 
 const autoModes = {
   balanced: "Even",
