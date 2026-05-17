@@ -2,6 +2,7 @@ const PREVIEW_MAX_SIDE = 1800;
 const EXPORT_MIME = "image/jpeg";
 const JPEG_QUALITY = 0.96;
 const ORIGINAL_PEEK_DELAY_MS = 10;
+const STATIC_ASSET_VERSION = "20260517d";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -212,6 +213,7 @@ const autoModes = {
 };
 
 let customPresets = loadCustomPresets();
+let ultraHdrWasmPromise = null;
 
 const state = {
   sourceImage: null,
@@ -628,16 +630,9 @@ function setImageActionsEnabled(enabled) {
   menuClear.disabled = !enabled;
 }
 
-async function checkExportCapabilities() {
-  try {
-    const response = await fetch("./api/capabilities", { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const capabilities = await response.json();
-    state.ultraHdrAvailable = Boolean(capabilities.ultraHdr);
-  } catch {
-    state.ultraHdrAvailable = false;
-  }
-  exportUltra.title = state.ultraHdrAvailable ? "" : "Ultra HDR export requires the local Python server.";
+function checkExportCapabilities() {
+  state.ultraHdrAvailable = Boolean(window.WebAssembly);
+  exportUltra.title = state.ultraHdrAvailable ? "" : "Ultra HDR export requires WebAssembly support.";
   setImageActionsEnabled(Boolean(state.sourceImage));
 }
 
@@ -1032,32 +1027,129 @@ async function exportProcessed(kind) {
 }
 
 async function exportUltraHdr() {
-  if (!state.sourceImage || !state.sourceDataUrl) return;
+  if (!state.sourceImage) return;
   setStatus("Rendering Ultra HDR...");
   try {
-    const imageDataUrl = await getExportImageDataUrl();
-    const response = await fetch("./api/export-ultrahdr", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        filename: state.sourceName,
-        image: imageDataUrl,
-        settings: state.settings,
-        exportSize: exportSize.value,
-      }),
+    const token = ++state.renderToken;
+    await nextFrame();
+    if (token !== state.renderToken) return;
+
+    const [wasm, input] = await Promise.all([getUltraHdrWasm(), makeUltraHdrEncodeInput()]);
+    if (token !== state.renderToken) return;
+
+    const encoded = wasm.encodeUltraHdr(new Uint8Array(input.sdrBuffer), input.hdrBuffer, {
+      baseQuality: 95,
+      gainMapQuality: 95,
+      targetHdrCapacity: clamp(Math.log2(Math.max(1, state.settings.hdrHeadroom)), 1, 6),
+      includeIsoMetadata: true,
+      includeUltrahdrV1: true,
+      gainMapScale: 1,
     });
-
-    if (!response.ok) {
-      const message = await response.text();
-      throw new Error(message || `Export failed with HTTP ${response.status}`);
-    }
-
-    const blob = await response.blob();
+    const blob = new Blob([encoded], { type: "image/jpeg" });
     downloadBlob(blob, `${state.sourceName}-ultrahdr.jpg`);
-    setStatus("Exported Ultra HDR JPEG");
+    setStatus(`Exported Ultra HDR JPEG ${input.width} x ${input.height}`);
   } catch (error) {
     console.error(error);
-    setStatus("Ultra HDR export failed. Run with app_server.py.");
+    setStatus("Ultra HDR export failed.");
+  }
+}
+
+async function getUltraHdrWasm() {
+  if (!ultraHdrWasmPromise) {
+    ultraHdrWasmPromise = import(`./vendor/open-ultrahdr/open_ultrahdr.js?v=${STATIC_ASSET_VERSION}`).then(({ default: createModule }) =>
+      createModule({
+        locateFile: (path) =>
+          path.endsWith(".wasm") ? `./vendor/open-ultrahdr/open_ultrahdr.wasm?v=${STATIC_ASSET_VERSION}` : path,
+      }),
+    );
+  }
+  return ultraHdrWasmPromise;
+}
+
+async function makeUltraHdrEncodeInput() {
+  const maxSide = exportSize.value === "full" ? Infinity : exportSize.value === "preview" ? PREVIEW_MAX_SIDE : Number(exportSize.value);
+  const source = makeSourceCanvas(state.sourceImage, maxSide);
+  const canvas = document.createElement("canvas");
+  canvas.width = source.width;
+  canvas.height = source.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(source, 0, 0);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const hdrBuffer = new Float32Array(canvas.width * canvas.height * 3);
+  fillSdrAndHdrBuffers(imageData.data, hdrBuffer, state.settings);
+  ctx.putImageData(imageData, 0, 0);
+
+  const sdrBlob = await canvasToBlob(canvas, EXPORT_MIME, JPEG_QUALITY);
+  return {
+    sdrBuffer: await sdrBlob.arrayBuffer(),
+    hdrBuffer,
+    width: canvas.width,
+    height: canvas.height,
+  };
+}
+
+function fillSdrAndHdrBuffers(data, hdrBuffer, settings) {
+  const exposure = 2 ** settings.sdrExposure;
+  const contrast = settings.sdrContrast;
+  const shadows = settings.sdrShadows ?? 0;
+  const highlights = settings.sdrHighlights ?? 0;
+  const sdrSat = settings.sdrSaturation;
+  const threshold = settings.highlightThreshold;
+  const softness = settings.highlightSoftness;
+  const power = settings.highlightPower;
+  const headroom = settings.hdrHeadroom;
+  const hdrSat = settings.hdrSaturation;
+  const gamma = settings.gainmapGamma;
+
+  for (let i = 0, h = 0; i < data.length; i += 4, h += 3) {
+    let r = data[i] / 255;
+    let g = data[i + 1] / 255;
+    let b = data[i + 2] / 255;
+
+    r = clamp01((r * exposure - 0.5) * contrast + 0.5);
+    g = clamp01((g * exposure - 0.5) * contrast + 0.5);
+    b = clamp01((b * exposure - 0.5) * contrast + 0.5);
+
+    const tonalLuma = luma(r, g, b);
+    const shadowMask = 1 - smoothstep(0.0, 0.55, tonalLuma);
+    const highlightMask = smoothstep(0.45, 1.0, tonalLuma);
+    r = applyTonalRange(r, shadows, shadowMask);
+    g = applyTonalRange(g, shadows, shadowMask);
+    b = applyTonalRange(b, shadows, shadowMask);
+    r = applyTonalRange(r, highlights, highlightMask);
+    g = applyTonalRange(g, highlights, highlightMask);
+    b = applyTonalRange(b, highlights, highlightMask);
+
+    const sdrLuma = luma(r, g, b);
+    r = clamp01(sdrLuma + (r - sdrLuma) * sdrSat);
+    g = clamp01(sdrLuma + (g - sdrLuma) * sdrSat);
+    b = clamp01(sdrLuma + (b - sdrLuma) * sdrSat);
+
+    const lr = srgbToLinear(r);
+    const lg = srgbToLinear(g);
+    const lb = srgbToLinear(b);
+    const ll = luma(lr, lg, lb);
+    let mask = smoothstep(threshold, threshold + softness, ll);
+    mask = Math.pow(clamp01(mask), power);
+    const gainResponse = Math.pow(mask, 1 / gamma);
+
+    const boost = 1 + (headroom - 1) * gainResponse;
+    let hr = lr * boost;
+    let hg = lg * boost;
+    let hb = lb * boost;
+    const hl = luma(hr, hg, hb);
+    const sat = 1 + (hdrSat - 1) * gainResponse;
+    hr = Math.max(0, hl + (hr - hl) * sat);
+    hg = Math.max(0, hl + (hg - hl) * sat);
+    hb = Math.max(0, hl + (hb - hl) * sat);
+
+    data[i] = Math.round(r * 255);
+    data[i + 1] = Math.round(g * 255);
+    data[i + 2] = Math.round(b * 255);
+    hdrBuffer[h] = hr;
+    hdrBuffer[h + 1] = hg;
+    hdrBuffer[h + 2] = hb;
   }
 }
 

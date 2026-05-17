@@ -12,8 +12,7 @@ The app is designed around phone use: load an image from the camera roll, previe
 - Manual controls for exposure, contrast, shadows, highlights, SDR color, HDR color, headroom, threshold, softness, power, and gain-map gamma.
 - Wand menu with browser-side automatic tuning passes.
 - Saved presets stored locally in the browser.
-- JPEG and gain-mask exports directly in the browser.
-- Optional Python-backed Ultra HDR JPEG export when running the local app server.
+- JPEG, gain-mask, and Ultra HDR exports directly in the browser.
 
 ## Run Locally
 
@@ -34,6 +33,8 @@ index.html
 app.js
 styles.css
 manifest.webmanifest
+vendor/open-ultrahdr/open_ultrahdr.js
+vendor/open-ultrahdr/open_ultrahdr.wasm
 ```
 
 Static deployment target:
@@ -42,11 +43,11 @@ Static deployment target:
 https://holosomnia.com/hdr/
 ```
 
-The Ultra HDR JPEG button requires `./api/export-ultrahdr`, which is provided by `app_server.py` during local development. A static nginx deployment does not provide that endpoint unless a backend route is added separately, so the hosted static app disables Ultra HDR export.
+Ultra HDR JPEG export is handled in the browser with WebAssembly from `open-ultrahdr-wasm`, built from upstream `google/libultrahdr`.
 
 ## Export Behavior
 
-- `Ultra HDR` sends the image and current settings to the Python endpoint and saves a real Ultra HDR + ISO 21496 gain-map JPEG.
+- `Ultra HDR` locally builds an adjusted SDR JPEG plus linear HDR RGB buffer, then writes a real Ultra HDR + ISO 21496 gain-map JPEG in WebAssembly.
 - `JPEG` saves the adjusted SDR fallback image directly in the browser.
 - `Gain` saves a grayscale gain-mask preview PNG directly in the browser.
 
@@ -56,4 +57,4 @@ The browser stores the last loaded image and editor state in IndexedDB, so refre
 
 ## Privacy
 
-The static hosted app does not upload images, presets, exports, or slider settings. It does not use cookies, analytics, advertising scripts, or tracking pixels. Browser storage is used only on the local device for session restore and saved presets. The local development server has an optional Ultra HDR export endpoint; the hosted static app does not enable that path.
+The static hosted app does not upload images, presets, exports, or slider settings. It does not use cookies, analytics, advertising scripts, or tracking pixels. Browser storage is used only on the local device for session restore and saved presets.
