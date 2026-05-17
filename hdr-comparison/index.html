@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HoloHDR Encoder Comparison</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #050505;
+        color: #f5efe5;
+      }
+
+      body {
+        margin: 0;
+        padding: 18px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 20px;
+      }
+
+      p {
+        max-width: 760px;
+        color: rgba(245, 239, 229, 0.72);
+        line-height: 1.45;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 18px;
+      }
+
+      figure {
+        margin: 0;
+        background: #111;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      img {
+        display: block;
+        width: 100%;
+        height: auto;
+        dynamic-range-limit: no-limit;
+      }
+
+      figcaption {
+        padding: 10px 12px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      a {
+        color: #89e7d5;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>HoloHDR Encoder Comparison</h1>
+    <p>
+      Neutral should look like the SDR input. Headroom 3 uses no HDR color increase, so it should get brighter without pushing saturation.
+      Open individual JPEGs directly if the browser preview grid does not trigger HDR presentation.
+    </p>
+    <div class="grid">
+      <figure>
+        <a href="./input.png"><img src="./input.png" alt="Original input" /></a>
+        <figcaption>Original input</figcaption>
+      </figure>
+      <figure>
+        <a href="./server-neutral.jpg"><img src="./server-neutral.jpg" alt="Server neutral Ultra HDR" /></a>
+        <figcaption>LXE luma neutral</figcaption>
+      </figure>
+      <figure>
+        <a href="./server-old-rgb-neutral.jpg"><img src="./server-old-rgb-neutral.jpg" alt="Old server RGB neutral Ultra HDR" /></a>
+        <figcaption>Old server RGB neutral</figcaption>
+      </figure>
+      <figure>
+        <a href="./wasm-neutral.jpg"><img src="./wasm-neutral.jpg" alt="WASM neutral Ultra HDR" /></a>
+        <figcaption>Old WASM neutral</figcaption>
+      </figure>
+      <figure>
+        <a href="./wasm-sdrintent-neutral.jpg"><img src="./wasm-sdrintent-neutral.jpg" alt="Patched WASM neutral Ultra HDR" /></a>
+        <figcaption>Patched WASM neutral</figcaption>
+      </figure>
+      <figure>
+        <a href="./server-headroom3-color1.jpg"><img src="./server-headroom3-color1.jpg" alt="Server headroom 3 Ultra HDR" /></a>
+        <figcaption>LXE luma headroom 3, color 1</figcaption>
+      </figure>
+      <figure>
+        <a href="./server-old-rgb-headroom3-color1.jpg"><img src="./server-old-rgb-headroom3-color1.jpg" alt="Old server RGB headroom 3 Ultra HDR" /></a>
+        <figcaption>Old server RGB headroom 3, color 1</figcaption>
+      </figure>
+      <figure>
+        <a href="./wasm-headroom3-color1.jpg"><img src="./wasm-headroom3-color1.jpg" alt="WASM headroom 3 Ultra HDR" /></a>
+        <figcaption>Old WASM headroom 3, color 1</figcaption>
+      </figure>
+      <figure>
+        <a href="./wasm-sdrintent-headroom3-color1.jpg"><img src="./wasm-sdrintent-headroom3-color1.jpg" alt="Patched WASM headroom 3 Ultra HDR" /></a>
+        <figcaption>Patched WASM headroom 3, color 1</figcaption>
+      </figure>
+    </div>
+  </body>
+</html>

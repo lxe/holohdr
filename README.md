@@ -133,6 +133,10 @@ make verify
 - `JPEG` saves the adjusted SDR fallback image directly in the browser.
 - `Gain` saves a grayscale gain-mask preview PNG directly in the browser.
 
+## Encoder Comparison
+
+The `hdr-comparison/` directory contains the test image, old server outputs, old WASM outputs, patched WASM outputs, and a static comparison page. It is kept in the repository as a visual regression fixture for checking that neutral Ultra HDR output preserves the SDR base image.
+
 ## Persistence
 
 The browser stores the last loaded image and editor state in IndexedDB, so refreshing restores the previous session. Saved presets are stored in `localStorage` on the same browser and device.

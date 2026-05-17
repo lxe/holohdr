@@ -1,0 +1,36 @@
+[
+  {
+    "name": "neutral",
+    "width": 521,
+    "height": 956,
+    "settings": {
+      "sdrExposure": 0.0,
+      "sdrContrast": 1.0,
+      "sdrSaturation": 1.0,
+      "hdrHeadroom": 1.0,
+      "hdrBrightness": 1.0,
+      "highlightThreshold": 0.5,
+      "highlightSoftness": 0.5,
+      "highlightPower": 1.0,
+      "hdrSaturation": 1.0,
+      "gainmapGamma": 1.0
+    }
+  },
+  {
+    "name": "headroom3-color1",
+    "width": 521,
+    "height": 956,
+    "settings": {
+      "sdrExposure": 0.0,
+      "sdrContrast": 1.0,
+      "sdrSaturation": 1.0,
+      "hdrHeadroom": 3.0,
+      "hdrBrightness": 1.0,
+      "highlightThreshold": 0.5,
+      "highlightSoftness": 0.5,
+      "highlightPower": 1.0,
+      "hdrSaturation": 1.0,
+      "gainmapGamma": 1.0
+    }
+  }
+]
