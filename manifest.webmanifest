@@ -1,6 +1,6 @@
 {
-  "name": "HDR Gain Map Tuner",
-  "short_name": "HDR Tuner",
+  "name": "HoloHDR",
+  "short_name": "HoloHDR",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#171717",
