@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517h";
+const STATIC_ASSET_VERSION = "20260517i";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -234,6 +234,8 @@ const state = {
   hdrPreviewUrl: null,
   hdrPreviewKey: "",
   hdrPreviewTimer: 0,
+  controlsOpen: false,
+  activeTool: "look",
   ultraHdrAvailable: false,
 };
 
@@ -339,6 +341,7 @@ document.querySelectorAll(".tool-button").forEach((button) => {
     setActiveTool(button.dataset.tool);
     button.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     setControlsOpen(!(wasOpen && wasActive));
+    schedulePreview();
     window.setTimeout(updateRailFades, 180);
   });
 });
@@ -582,9 +585,11 @@ function decodeImage(src) {
 }
 
 function setControlsOpen(open) {
+  state.controlsOpen = open;
   controlsPanel.classList.toggle("open", open);
   const mobile = window.matchMedia("(max-width: 860px)").matches;
   toolPanel.setAttribute("aria-hidden", String(!open && mobile));
+  if (!isTrueHdrPreviewActive()) showCanvasPreview();
 }
 
 function updateRailFades() {
@@ -594,12 +599,14 @@ function updateRailFades() {
 }
 
 function setActiveTool(tool) {
+  state.activeTool = tool;
   document.querySelectorAll(".tool-button").forEach((button) => {
     button.classList.toggle("active", button.dataset.tool === tool);
   });
   document.querySelectorAll(".tool-section").forEach((section) => {
     section.classList.toggle("active", section.dataset.section === tool);
   });
+  if (!isTrueHdrPreviewActive()) showCanvasPreview();
 }
 
 function openHelpOverlay() {
@@ -657,6 +664,7 @@ function setPreviewMode(mode) {
   document.querySelectorAll(".segment").forEach((item) => {
     item.classList.toggle("active", item.dataset.mode === mode);
   });
+  if (!isTrueHdrPreviewActive()) showCanvasPreview();
 }
 
 function applyAutoTune(mode) {
@@ -1086,6 +1094,10 @@ function clearHdrPreview() {
   hdrPreviewImage.style.display = "none";
 }
 
+function isTrueHdrPreviewActive() {
+  return state.controlsOpen && state.activeTool === "preview" && state.previewMode === "hdr" && state.ultraHdrAvailable;
+}
+
 function schedulePreview() {
   if (!state.previewSource) return;
   window.clearTimeout(state.hdrPreviewTimer);
@@ -1094,7 +1106,7 @@ function schedulePreview() {
     if (token !== state.renderToken) return;
     renderPreview();
   });
-  if (state.previewMode === "hdr" && !state.peekingOriginal && state.ultraHdrAvailable) {
+  if (isTrueHdrPreviewActive() && !state.peekingOriginal) {
     state.hdrPreviewTimer = window.setTimeout(() => {
       renderTrueHdrPreview(token).catch((error) => {
         console.warn("True HDR preview failed", error);
@@ -1119,7 +1131,7 @@ function renderPreview() {
 }
 
 async function renderTrueHdrPreview(token) {
-  if (token !== state.renderToken || state.previewMode !== "hdr" || state.peekingOriginal || !state.previewSource) return;
+  if (token !== state.renderToken || !isTrueHdrPreviewActive() || state.peekingOriginal || !state.previewSource) return;
 
   const key = makeHdrPreviewKey();
   if (state.hdrPreviewUrl && state.hdrPreviewKey === key) {
@@ -1128,12 +1140,12 @@ async function renderTrueHdrPreview(token) {
   }
 
   const [wasm, input] = await Promise.all([getUltraHdrWasm(), makeUltraHdrEncodeInput(PREVIEW_MAX_SIDE)]);
-  if (token !== state.renderToken || state.previewMode !== "hdr" || state.peekingOriginal || !state.previewSource) return;
+  if (token !== state.renderToken || !isTrueHdrPreviewActive() || state.peekingOriginal || !state.previewSource) return;
 
   const blob = encodeUltraHdrBlob(wasm, input);
   const url = URL.createObjectURL(blob);
   await loadHdrPreviewUrl(url);
-  if (token !== state.renderToken || state.previewMode !== "hdr" || state.peekingOriginal || !state.previewSource) {
+  if (token !== state.renderToken || !isTrueHdrPreviewActive() || state.peekingOriginal || !state.previewSource) {
     URL.revokeObjectURL(url);
     return;
   }
