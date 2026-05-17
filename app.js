@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517v";
+const STATIC_ASSET_VERSION = "20260517y";
 const HDR_COLOR_BASE_STRENGTH = 0.18;
 const HDR_COLOR_MAX_DELTA = 0.28;
 const HDR_COLOR_RESPONSE_FLOOR = 0.06;
@@ -1142,19 +1142,8 @@ function clearHdrPreview() {
   hdrPreviewImage.style.display = "none";
 }
 
-function hasHdrAdjustment(settings = state.settings) {
-  return (
-    Math.abs((settings.hdrHeadroom ?? neutralSettings.hdrHeadroom) - neutralSettings.hdrHeadroom) >
-      NEUTRAL_SETTING_EPSILON ||
-    Math.abs((settings.hdrBrightness ?? neutralSettings.hdrBrightness) - neutralSettings.hdrBrightness) >
-      NEUTRAL_SETTING_EPSILON ||
-    Math.abs((settings.hdrSaturation ?? neutralSettings.hdrSaturation) - neutralSettings.hdrSaturation) >
-      NEUTRAL_SETTING_EPSILON
-  );
-}
-
 function isTrueHdrPreviewActive() {
-  return state.previewMode === "hdr" && state.ultraHdrAvailable && hasHdrAdjustment();
+  return state.previewMode === "hdr" && state.ultraHdrAvailable && Boolean(state.previewSource);
 }
 
 function schedulePreview() {
@@ -1191,8 +1180,7 @@ function renderPreview() {
   }
 
   const imageData = previewCtx.getImageData(0, 0, source.width, source.height);
-  const renderMode = state.previewMode === "hdr" && !hasHdrAdjustment() ? "sdr" : state.previewMode;
-  processPixels(imageData.data, state.settings, renderMode);
+  processPixels(imageData.data, state.settings, state.previewMode);
   previewCtx.putImageData(imageData, 0, 0);
 }
 
@@ -1309,7 +1297,7 @@ function makeUltraHdrOptions(options = {}) {
     includeUltrahdrV1: true,
     gainMapScale: options.gainMapScale ?? 1,
     realtime: options.realtime ?? false,
-    multiChannelGainMap: options.multiChannelGainMap ?? true,
+    multiChannelGainMap: options.multiChannelGainMap ?? false,
   };
 }
 
