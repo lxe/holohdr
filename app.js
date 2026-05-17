@@ -75,6 +75,7 @@ const presets = {
 
 const state = {
   sourceImage: null,
+  sourceDataUrl: null,
   sourceName: "image",
   previewSource: null,
   previewMode: "hdr",
@@ -90,6 +91,7 @@ const presetSelect = document.getElementById("presetSelect");
 const sliderStack = document.getElementById("sliderStack");
 const statusLine = document.getElementById("statusLine");
 const exportSize = document.getElementById("exportSize");
+const exportUltra = document.getElementById("exportUltra");
 const exportJpeg = document.getElementById("exportJpeg");
 const exportGain = document.getElementById("exportGain");
 const previewCtx = previewCanvas.getContext("2d", { willReadFrequently: true });
@@ -123,6 +125,7 @@ document.querySelectorAll(".segment").forEach((button) => {
 
 exportJpeg.addEventListener("click", () => exportProcessed("jpeg"));
 exportGain.addEventListener("click", () => exportProcessed("gain"));
+exportUltra.addEventListener("click", () => exportUltraHdr());
 
 function buildControls() {
   sliderStack.innerHTML = "";
@@ -170,12 +173,14 @@ async function loadFile(file) {
     await img.decode();
 
     state.sourceImage = img;
+    state.sourceDataUrl = await fileToDataUrl(file);
     state.sourceName = file.name.replace(/\.[^.]+$/, "") || "image";
     state.previewSource = makeSourceCanvas(img, PREVIEW_MAX_SIDE);
 
     imageMeta.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
     emptyState.style.display = "none";
     previewCanvas.style.display = "block";
+    exportUltra.disabled = false;
     exportJpeg.disabled = false;
     exportGain.disabled = false;
     schedulePreview();
@@ -230,6 +235,36 @@ async function exportProcessed(kind) {
   setStatus(`Exported ${canvas.width} x ${canvas.height}`);
 }
 
+async function exportUltraHdr() {
+  if (!state.sourceImage || !state.sourceDataUrl) return;
+  setStatus("Rendering Ultra HDR...");
+  try {
+    const imageDataUrl = await getExportImageDataUrl();
+    const response = await fetch("./api/export-ultrahdr", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: state.sourceName,
+        image: imageDataUrl,
+        settings: state.settings,
+        exportSize: exportSize.value,
+      }),
+    });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || `Export failed with HTTP ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    downloadBlob(blob, `${state.sourceName}-ultrahdr.jpg`);
+    setStatus("Exported Ultra HDR JPEG");
+  } catch (error) {
+    console.error(error);
+    setStatus("Ultra HDR export failed. Run with app_server.py.");
+  }
+}
+
 function makeSourceCanvas(img, maxSide) {
   const srcWidth = img.naturalWidth || img.width;
   const srcHeight = img.naturalHeight || img.height;
@@ -244,6 +279,13 @@ function makeSourceCanvas(img, maxSide) {
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(img, 0, 0, width, height);
   return canvas;
+}
+
+async function getExportImageDataUrl() {
+  if (exportSize.value === "full") return state.sourceDataUrl;
+  const maxSide = exportSize.value === "preview" ? PREVIEW_MAX_SIDE : Number(exportSize.value);
+  const source = makeSourceCanvas(state.sourceImage, maxSide);
+  return source.toDataURL("image/png");
 }
 
 function processPixels(data, settings, mode) {
@@ -362,6 +404,15 @@ function downloadBlob(blob, filename) {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function nextFrame() {

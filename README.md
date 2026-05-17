@@ -5,14 +5,15 @@ Mobile-friendly browser prototype for tuning the LXE Ultra HDR gain-map style se
 ## Run
 
 ```bash
-python3 -m http.server 5177 --bind 0.0.0.0
+/home/lxe/comfyui/.venv/bin/python app_server.py --host 0.0.0.0 --port 5177
 ```
 
 Open `http://<machine-ip>:5177/` from another device on the same network or Tailnet.
 
 ## Current export behavior
 
-- `Export JPEG` saves the adjusted SDR fallback image.
+- `Export Ultra HDR` sends the image/settings to the local Python endpoint and saves a real Ultra HDR + ISO 21496 gain-map JPEG.
+- `Export JPEG` saves the adjusted SDR fallback image directly in the browser.
 - `Export Gain` saves a grayscale gain-mask preview PNG.
 
-This first pass does not write embedded Ultra HDR / ISO 21496 JPEG metadata in the browser. The live preview uses the same SDR adjustment, highlight mask, headroom, saturation, and gain gamma controls as the ComfyUI node, but the final Ultra HDR gain-map JPEG writer still needs either a server-side Python endpoint or a browser/WASM JPEG metadata writer.
+The live preview uses the same SDR adjustment, highlight mask, headroom, saturation, and gain gamma controls as the ComfyUI node. The Ultra HDR export path reuses the installed Python `hdr-conversion` stack instead of a browser/WASM JPEG metadata writer.

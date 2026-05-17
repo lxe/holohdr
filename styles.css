@@ -252,10 +252,16 @@ input[type="range"] {
   margin-top: 10px;
 }
 
-#exportJpeg {
+#exportUltra {
+  grid-column: 1 / -1;
   background: var(--accent);
   color: #061d18;
   border-color: #64d8c2;
+}
+
+#exportJpeg {
+  background: #334b45;
+  border-color: #4f756b;
 }
 
 #exportGain {
