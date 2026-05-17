@@ -6,7 +6,8 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517p";
+const STATIC_ASSET_VERSION = "20260517q";
+const HDR_COLOR_BASE_STRENGTH = 0.45;
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -66,7 +67,7 @@ const sliders = [
     max: 2.5,
     step: 0.01,
     group: "color",
-    description: "Controls color only in areas receiving HDR boost. Too much can make glowing clouds or sunsets look neon.",
+    description: "Adds color mostly in areas receiving HDR lift. HoloHDR also nudges the Ultra HDR fallback image so the change survives apps that flatten gain-map color.",
   },
   {
     key: "hdrHeadroom",
@@ -1446,20 +1447,32 @@ function fillSdrAndHdrBuffers(data, hdrBuffer, settings) {
     g = clamp01(sdrLuma + (g - sdrLuma) * sdrSat);
     b = clamp01(sdrLuma + (b - sdrLuma) * sdrSat);
 
-    const lr = srgbToLinear(r);
-    const lg = srgbToLinear(g);
-    const lb = srgbToLinear(b);
+    let lr = srgbToLinear(r);
+    let lg = srgbToLinear(g);
+    let lb = srgbToLinear(b);
     const ll = luma(lr, lg, lb);
     let mask = smoothstep(threshold, threshold + softness, ll);
     mask = Math.pow(clamp01(mask), power);
     const gainResponse = Math.pow(mask, 1 / gamma);
+    const colorResponse = 0.15 + gainResponse * 0.85;
+
+    const baseHdrSat = 1 + (hdrSat - 1) * colorResponse * HDR_COLOR_BASE_STRENGTH;
+    if (Math.abs(baseHdrSat - 1) > NEUTRAL_SETTING_EPSILON) {
+      const baseLuma = luma(r, g, b);
+      r = clamp01(baseLuma + (r - baseLuma) * baseHdrSat);
+      g = clamp01(baseLuma + (g - baseLuma) * baseHdrSat);
+      b = clamp01(baseLuma + (b - baseLuma) * baseHdrSat);
+      lr = srgbToLinear(r);
+      lg = srgbToLinear(g);
+      lb = srgbToLinear(b);
+    }
 
     const boost = 1 + (headroom - 1) * gainResponse;
     let hr = lr * boost;
     let hg = lg * boost;
     let hb = lb * boost;
     const hl = luma(hr, hg, hb);
-    const sat = 1 + (hdrSat - 1) * gainResponse;
+    const sat = 1 + (hdrSat - 1) * colorResponse * (1 - HDR_COLOR_BASE_STRENGTH);
     hr = Math.max(0, hl + (hr - hl) * sat);
     hg = Math.max(0, hl + (hg - hl) * sat);
     hb = Math.max(0, hl + (hb - hl) * sat);
@@ -1537,20 +1550,34 @@ function processPixels(data, settings, mode) {
     g = clamp01(sdrLuma + (g - sdrLuma) * sdrSat);
     b = clamp01(sdrLuma + (b - sdrLuma) * sdrSat);
 
-    const lr = srgbToLinear(r);
-    const lg = srgbToLinear(g);
-    const lb = srgbToLinear(b);
+    let lr = srgbToLinear(r);
+    let lg = srgbToLinear(g);
+    let lb = srgbToLinear(b);
     const ll = luma(lr, lg, lb);
     let mask = smoothstep(threshold, threshold + softness, ll);
     mask = Math.pow(clamp01(mask), power);
     const gainResponse = Math.pow(mask, 1 / gamma);
+    const colorResponse = 0.15 + gainResponse * 0.85;
+
+    if (mode === "hdr") {
+      const baseHdrSat = 1 + (hdrSat - 1) * colorResponse * HDR_COLOR_BASE_STRENGTH;
+      if (Math.abs(baseHdrSat - 1) > NEUTRAL_SETTING_EPSILON) {
+        const baseLuma = luma(r, g, b);
+        r = clamp01(baseLuma + (r - baseLuma) * baseHdrSat);
+        g = clamp01(baseLuma + (g - baseLuma) * baseHdrSat);
+        b = clamp01(baseLuma + (b - baseLuma) * baseHdrSat);
+        lr = srgbToLinear(r);
+        lg = srgbToLinear(g);
+        lb = srgbToLinear(b);
+      }
+    }
 
     const boost = 1 + (headroom - 1) * gainResponse;
     let hr = lr * boost;
     let hg = lg * boost;
     let hb = lb * boost;
     const hl = luma(hr, hg, hb);
-    const sat = 1 + (hdrSat - 1) * gainResponse;
+    const sat = 1 + (hdrSat - 1) * colorResponse * (1 - HDR_COLOR_BASE_STRENGTH);
     hr = Math.max(0, hl + (hr - hl) * sat);
     hg = Math.max(0, hl + (hg - hl) * sat);
     hb = Math.max(0, hl + (hb - hl) * sat);
