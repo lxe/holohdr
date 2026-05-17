@@ -11,22 +11,23 @@ const sliders = [
   { key: "sdrContrast", label: "Contrast", min: 0.5, max: 1.5, step: 0.01, group: "tone" },
   { key: "sdrSaturation", label: "SDR color", min: 0, max: 2.5, step: 0.01, group: "color" },
   { key: "hdrSaturation", label: "HDR color", min: 0, max: 2.5, step: 0.01, group: "color" },
-  { key: "hdrHeadroom", label: "Headroom", min: 1, max: 12, step: 0.1, group: "hdr" },
-  { key: "highlightThreshold", label: "Threshold", min: 0, max: 1, step: 0.01, group: "hdr" },
-  { key: "highlightSoftness", label: "Softness", min: 0.01, max: 1, step: 0.01, group: "hdr" },
-  { key: "highlightPower", label: "Power", min: 0.1, max: 5, step: 0.01, group: "hdr" },
-  { key: "gainmapGamma", label: "Gamma", min: 0.1, max: 4, step: 0.01, group: "hdr" },
+  { key: "hdrHeadroom", label: "Headroom", min: 1, max: 12, step: 0.1, group: "headroom" },
+  { key: "highlightThreshold", label: "Threshold", min: 0, max: 1, step: 0.01, group: "threshold" },
+  { key: "highlightSoftness", label: "Softness", min: 0.01, max: 1, step: 0.01, group: "softness" },
+  { key: "highlightPower", label: "Power", min: 0.1, max: 5, step: 0.01, group: "power" },
+  { key: "gainmapGamma", label: "Gamma", min: 0.1, max: 4, step: 0.01, group: "gamma" },
 ];
 
 const toolTitles = {
-  open: "Open",
+  menu: "Menu",
   look: "Look",
   tone: "Tone",
   color: "Color",
-  hdr: "HDR",
-  size: "Size",
-  save: "Export",
-  clear: "Clear",
+  headroom: "Headroom",
+  threshold: "Threshold",
+  softness: "Softness",
+  power: "Power",
+  gamma: "Gamma",
 };
 
 const presets = {
@@ -122,7 +123,11 @@ const presetSelect = document.getElementById("presetSelect");
 const sliderStacks = {
   tone: document.getElementById("toneSliderStack"),
   color: document.getElementById("colorSliderStack"),
-  hdr: document.getElementById("hdrSliderStack"),
+  headroom: document.getElementById("headroomSliderStack"),
+  threshold: document.getElementById("thresholdSliderStack"),
+  softness: document.getElementById("softnessSliderStack"),
+  power: document.getElementById("powerSliderStack"),
+  gamma: document.getElementById("gammaSliderStack"),
 };
 const statusLine = document.getElementById("statusLine");
 const exportSize = document.getElementById("exportSize");

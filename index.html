@@ -27,15 +27,9 @@
               <strong id="toolTitle">Look</strong>
             </div>
 
-            <div class="tool-section menu-section" data-section="open">
+            <div class="tool-section menu-section" data-section="menu">
               <button id="menuOpen" class="menu-action" type="button">Open image</button>
-            </div>
-
-            <div class="tool-section menu-section" data-section="clear">
               <button id="menuClear" class="menu-action danger" type="button" disabled>Clear image</button>
-            </div>
-
-            <div class="tool-section menu-section" data-section="size">
               <div class="control-row compact">
                 <label for="exportSize">Size</label>
                 <select id="exportSize">
@@ -45,9 +39,6 @@
                   <option value="preview">Preview size</option>
                 </select>
               </div>
-            </div>
-
-            <div class="tool-section menu-section" data-section="save">
               <div class="button-grid">
                 <button id="exportUltra" type="button" disabled>Ultra HDR</button>
                 <button id="exportJpeg" type="button" disabled>JPEG</button>
@@ -78,13 +69,17 @@
 
             <div id="toneSliderStack" class="tool-section slider-stack" data-section="tone"></div>
             <div id="colorSliderStack" class="tool-section slider-stack" data-section="color"></div>
-            <div id="hdrSliderStack" class="tool-section slider-stack" data-section="hdr"></div>
+            <div id="headroomSliderStack" class="tool-section slider-stack" data-section="headroom"></div>
+            <div id="thresholdSliderStack" class="tool-section slider-stack" data-section="threshold"></div>
+            <div id="softnessSliderStack" class="tool-section slider-stack" data-section="softness"></div>
+            <div id="powerSliderStack" class="tool-section slider-stack" data-section="power"></div>
+            <div id="gammaSliderStack" class="tool-section slider-stack" data-section="gamma"></div>
           </div>
 
           <nav class="tool-rail" aria-label="Adjustment tools">
-            <button class="tool-button" type="button" data-tool="open" aria-label="Open image">
+            <button class="tool-button" type="button" data-tool="menu" aria-label="Menu">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 20h16M12 4v11M7 10l5 5 5-5" />
+                <path d="M4 7h16M4 12h16M4 17h16" />
               </svg>
             </button>
             <button class="tool-button active" type="button" data-tool="look" aria-label="Look">
@@ -106,24 +101,29 @@
                 <circle cx="15.5" cy="10.5" r="1" />
               </svg>
             </button>
-            <button class="tool-button" type="button" data-tool="hdr" aria-label="HDR">
+            <button class="tool-button" type="button" data-tool="headroom" aria-label="Headroom">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M13 2 4 14h7l-1 8 10-13h-7l1-7Z" />
               </svg>
             </button>
-            <button class="tool-button" type="button" data-tool="size" aria-label="Export size">
+            <button class="tool-button" type="button" data-tool="threshold" aria-label="Threshold">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4" />
+                <path d="M4 12h16M12 4v16" />
               </svg>
             </button>
-            <button class="tool-button" type="button" data-tool="save" aria-label="Export">
+            <button class="tool-button" type="button" data-tool="softness" aria-label="Softness">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3v12M7 10l5 5 5-5M5 20h14" />
+                <path d="M5 16c3.5-8 10.5-8 14 0" />
               </svg>
             </button>
-            <button class="tool-button" type="button" data-tool="clear" aria-label="Clear image">
+            <button class="tool-button" type="button" data-tool="power" aria-label="Power">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" />
+                <path d="M12 3v10M7 8a7 7 0 1 0 10 0" />
+              </svg>
+            </button>
+            <button class="tool-button" type="button" data-tool="gamma" aria-label="Gamma">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19 11 5l3 8 5-8" />
               </svg>
             </button>
           </nav>
