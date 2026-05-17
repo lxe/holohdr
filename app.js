@@ -178,6 +178,14 @@ const presets = {
   },
 };
 
+const autoModes = {
+  balanced: "Even",
+  vibrant: "Color",
+  social: "Social",
+  glow: "Glow",
+  shadows: "Dark",
+};
+
 const state = {
   sourceImage: null,
   sourceDataUrl: null,
@@ -210,6 +218,7 @@ const toolPanel = document.getElementById("toolPanel");
 const toolRailShell = document.getElementById("toolRailShell");
 const toolRail = document.getElementById("toolRail");
 const presetSelect = document.getElementById("presetSelect");
+const autoSummary = document.getElementById("autoSummary");
 const sliderStacks = {
   tone: document.getElementById("toneSliderStack"),
   shadows: document.getElementById("shadowsSliderStack"),
@@ -268,6 +277,9 @@ menuOpen.addEventListener("click", openImagePicker);
 menuClear.addEventListener("click", clearImage);
 toolRail.addEventListener("scroll", updateRailFades, { passive: true });
 window.addEventListener("resize", updateRailFades);
+document.querySelectorAll("[data-auto-mode]").forEach((button) => {
+  button.addEventListener("click", () => applyAutoTune(button.dataset.autoMode));
+});
 document.querySelectorAll(".tool-button").forEach((button) => {
   button.addEventListener("click", () => {
     const wasOpen = controlsPanel.classList.contains("open");
@@ -446,6 +458,185 @@ function setPreviewMode(mode) {
   document.querySelectorAll(".segment").forEach((item) => {
     item.classList.toggle("active", item.dataset.mode === mode);
   });
+}
+
+function applyAutoTune(mode) {
+  if (!state.previewSource) {
+    setStatus("Open an image first.");
+    if (autoSummary) autoSummary.textContent = "Open an image, then choose a wand pass.";
+    openImagePicker();
+    return;
+  }
+
+  const analysis = analyzeImageForAutoTune();
+  const settings = makeAutoSettings(mode, analysis);
+  state.settings = { ...state.settings, ...settings };
+  presetSelect.value = "custom";
+  document.querySelectorAll("[data-auto-mode]").forEach((button) => {
+    button.classList.toggle("selected", button.dataset.autoMode === mode);
+  });
+  applySettingsToControls();
+  schedulePreview();
+  saveSessionSoon();
+
+  const label = autoModes[mode] || "Auto";
+  const summary = summarizeAutoTune(label, analysis, settings);
+  if (autoSummary) autoSummary.textContent = summary;
+  setStatus(`${label} auto tune applied`);
+}
+
+function analyzeImageForAutoTune() {
+  const source = state.previewSource;
+  const maxSide = 360;
+  const scale = Math.min(1, maxSide / Math.max(source.width, source.height));
+  const width = Math.max(1, Math.round(source.width * scale));
+  const height = Math.max(1, Math.round(source.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(source, 0, 0, width, height);
+
+  const data = ctx.getImageData(0, 0, width, height).data;
+  const pixelCount = data.length / 4;
+  const luminance = new Float32Array(pixelCount);
+  let satSum = 0;
+  let shadowSatSum = 0;
+  let shadowCount = 0;
+  let highlightSatSum = 0;
+  let highlightCount = 0;
+  let darkCount = 0;
+  let brightCount = 0;
+  let nearWhiteCount = 0;
+
+  for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+    const r = data[i] / 255;
+    const g = data[i + 1] / 255;
+    const b = data[i + 2] / 255;
+    const y = luma(r, g, b);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const sat = max <= 0 ? 0 : (max - min) / max;
+
+    luminance[p] = y;
+    satSum += sat;
+    if (y < 0.36) {
+      shadowSatSum += sat;
+      shadowCount += 1;
+    }
+    if (y > 0.66) {
+      highlightSatSum += sat;
+      highlightCount += 1;
+    }
+    if (y < 0.16) darkCount += 1;
+    if (y > 0.72) brightCount += 1;
+    if (y > 0.96 && max > 0.98) nearWhiteCount += 1;
+  }
+
+  luminance.sort();
+  const p05 = percentile(luminance, 0.05);
+  const p10 = percentile(luminance, 0.1);
+  const p25 = percentile(luminance, 0.25);
+  const p50 = percentile(luminance, 0.5);
+  const p75 = percentile(luminance, 0.75);
+  const p90 = percentile(luminance, 0.9);
+  const p95 = percentile(luminance, 0.95);
+  const p99 = percentile(luminance, 0.99);
+
+  return {
+    p05,
+    p10,
+    p25,
+    p50,
+    p75,
+    p90,
+    p95,
+    p99,
+    range: p90 - p10,
+    avgSat: satSum / pixelCount,
+    shadowSat: shadowCount ? shadowSatSum / shadowCount : 0,
+    highlightSat: highlightCount ? highlightSatSum / highlightCount : 0,
+    darkFraction: darkCount / pixelCount,
+    brightFraction: brightCount / pixelCount,
+    nearWhiteFraction: nearWhiteCount / pixelCount,
+  };
+}
+
+function makeAutoSettings(mode, analysis) {
+  const highStart = srgbToLinear(clamp(analysis.p75 + (analysis.brightFraction > 0.22 ? 0.08 : 0.02), 0.46, 0.78));
+  const flatImage = analysis.range < 0.46;
+  const darkImage = analysis.p50 < 0.42 || analysis.darkFraction > 0.32;
+  const brightImage = analysis.p50 > 0.62 || analysis.nearWhiteFraction > 0.035;
+
+  const settings = {
+    sdrExposure: clamp((0.5 - analysis.p50) * 0.46, -0.16, 0.18),
+    sdrContrast: clamp(1 + (0.48 - analysis.range) * 0.32, 0.9, 1.08),
+    sdrShadows: clamp((0.24 - analysis.p25) * 0.82 + analysis.shadowSat * 0.08, -0.06, 0.24),
+    sdrHighlights: clamp(brightImage ? -0.06 - analysis.nearWhiteFraction * 1.2 : -Math.max(0, analysis.p95 - 0.88) * 0.55, -0.24, 0.04),
+    sdrSaturation: clamp(1.04 + (0.26 - analysis.avgSat) * 0.24 + analysis.shadowSat * 0.12, 0.98, 1.18),
+    hdrHeadroom: clamp(3.2 + (1 - analysis.brightFraction) * 0.8 - analysis.nearWhiteFraction * 5, 2.4, 4.2),
+    highlightThreshold: clamp(highStart, 0.24, 0.58),
+    highlightSoftness: clamp(0.46 + analysis.brightFraction * 0.62 + (flatImage ? 0.08 : 0), 0.36, 0.68),
+    highlightPower: clamp(1.04 + analysis.brightFraction * 0.55 - (flatImage ? 0.12 : 0), 0.82, 1.38),
+    hdrSaturation: clamp(1.06 + (0.22 - analysis.highlightSat) * 0.18, 1, 1.16),
+    gainmapGamma: clamp(1.02 + analysis.brightFraction * 0.2, 0.88, 1.18),
+  };
+
+  if (darkImage) {
+    settings.sdrShadows += 0.05;
+    settings.sdrExposure += 0.03;
+    settings.sdrContrast -= 0.03;
+  }
+
+  if (mode === "vibrant") {
+    settings.sdrSaturation += 0.09;
+    settings.hdrSaturation += 0.05;
+    settings.sdrShadows += 0.04;
+    settings.highlightThreshold -= 0.035;
+    settings.gainmapGamma -= 0.08;
+  } else if (mode === "social") {
+    settings.hdrHeadroom -= 0.48;
+    settings.highlightThreshold += 0.07;
+    settings.highlightPower += 0.16;
+    settings.highlightSoftness -= 0.04;
+    settings.sdrHighlights -= 0.04;
+    settings.hdrSaturation -= 0.04;
+  } else if (mode === "glow") {
+    settings.hdrHeadroom += 0.62;
+    settings.highlightThreshold -= 0.055;
+    settings.highlightSoftness += 0.08;
+    settings.highlightPower -= 0.18;
+    settings.hdrSaturation += 0.06;
+    settings.sdrHighlights -= 0.04;
+    settings.gainmapGamma -= 0.08;
+  } else if (mode === "shadows") {
+    settings.sdrShadows += 0.16;
+    settings.sdrExposure += 0.035;
+    settings.sdrContrast -= 0.05;
+    settings.sdrSaturation += 0.06;
+    settings.sdrHighlights -= 0.035;
+    settings.hdrHeadroom -= 0.22;
+  }
+
+  return clampSettingsToSliderRanges(settings);
+}
+
+function clampSettingsToSliderRanges(settings) {
+  const limits = Object.fromEntries(sliders.map(({ key, min, max }) => [key, { min, max }]));
+  return Object.fromEntries(
+    Object.entries(settings).map(([key, value]) => {
+      const limit = limits[key];
+      return [key, limit ? clamp(value, limit.min, limit.max) : value];
+    }),
+  );
+}
+
+function summarizeAutoTune(label, analysis, settings) {
+  const shadowLift = settings.sdrShadows > 0.08 ? " lifted shadows" : " held shadows";
+  const highlightPlan = settings.sdrHighlights < -0.08 ? " pulled back whites" : " kept whites close";
+  const colorPlan = settings.sdrSaturation > 1.12 ? " raised color" : " kept color moderate";
+  const brightness = analysis.p50 < 0.42 ? "dark" : analysis.p50 > 0.62 ? "bright" : "balanced";
+  return `${label}: ${brightness} image,${shadowLift},${highlightPlan},${colorPlan}.`;
 }
 
 function beginPreviewGesture(event) {
@@ -804,6 +995,19 @@ function smoothstep(edge0, edge1, value) {
   if (edge1 <= edge0) edge1 = edge0 + 1e-6;
   const t = clamp01((value - edge0) / (edge1 - edge0));
   return t * t * (3 - 2 * t);
+}
+
+function percentile(sorted, amount) {
+  if (!sorted.length) return 0;
+  const index = clamp(amount, 0, 1) * (sorted.length - 1);
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return sorted[lower];
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower);
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function clamp01(value) {

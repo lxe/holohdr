@@ -248,6 +248,52 @@ select {
   color: #ff9a9f;
 }
 
+.wand-section.active {
+  gap: 8px;
+}
+
+.wand-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.wand-preset {
+  min-width: 0;
+  min-height: 58px;
+  padding: 7px 4px 6px;
+  flex-direction: column;
+  gap: 5px;
+  background: var(--control);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.wand-preset svg {
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.wand-preset:active,
+.wand-preset.selected {
+  background: var(--control-hi);
+  color: var(--text);
+}
+
+.auto-summary {
+  min-height: 32px;
+  margin: 0;
+  color: rgba(246, 242, 234, 0.62);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .section-label {
   margin-top: 4px;
   color: var(--muted);
@@ -528,6 +574,23 @@ input[type="range"]::-moz-range-thumb {
 
   .tool-section.active {
     gap: 8px;
+  }
+
+  .wand-grid {
+    grid-template-columns: repeat(5, minmax(44px, 1fr));
+    gap: 5px;
+  }
+
+  .wand-preset {
+    min-height: 50px;
+    padding: 5px 2px 4px;
+    border-radius: 9px;
+    font-size: 10px;
+  }
+
+  .wand-preset svg {
+    width: 19px;
+    height: 19px;
   }
 
   .tool-rail-shell {

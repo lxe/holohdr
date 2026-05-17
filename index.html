@@ -56,6 +56,47 @@
               <p id="statusLine" class="status-line">Ready</p>
             </div>
 
+            <div class="tool-section wand-section" data-section="wand">
+              <div class="wand-grid" aria-label="Automatic adjustments">
+                <button class="wand-preset" type="button" data-auto-mode="balanced" aria-label="Auto balanced">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 4v16M5 8h14M8 16h8" />
+                  </svg>
+                  <span>Even</span>
+                </button>
+                <button class="wand-preset" type="button" data-auto-mode="vibrant" aria-label="Auto vibrant">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3c4.4 0 8 3.1 8 7 0 2.9-2 5.3-4.8 6.4-.9.4-1.2 1.4-.7 2.2.6 1-.2 2.4-1.5 2.4H12a9 9 0 0 1 0-18Z" />
+                    <circle cx="8.4" cy="10" r=".9" />
+                    <circle cx="12" cy="8" r=".9" />
+                    <circle cx="15.6" cy="10.5" r=".9" />
+                  </svg>
+                  <span>Color</span>
+                </button>
+                <button class="wand-preset" type="button" data-auto-mode="social" aria-label="Auto social safe">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="5" y="4" width="14" height="16" rx="3" />
+                    <path d="M9 8h6M9 12h6M10 16h4" />
+                  </svg>
+                  <span>Social</span>
+                </button>
+                <button class="wand-preset" type="button" data-auto-mode="glow" aria-label="Auto glow">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M13 2 4 14h7l-1 8 10-13h-7l1-7Z" />
+                  </svg>
+                  <span>Glow</span>
+                </button>
+                <button class="wand-preset" type="button" data-auto-mode="shadows" aria-label="Auto shadow lift">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 4a8 8 0 1 0 0 16Z" />
+                    <path d="M12 7a5 5 0 0 1 0 10" />
+                  </svg>
+                  <span>Dark</span>
+                </button>
+              </div>
+              <p id="autoSummary" class="auto-summary">Open an image, then choose a wand pass.</p>
+            </div>
+
             <div class="tool-section active" data-section="look">
               <div class="control-row compact">
                 <label for="presetSelect">Preset</label>
@@ -92,6 +133,12 @@
               <button class="tool-button" type="button" data-tool="menu" aria-label="Menu">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+              </button>
+              <button class="tool-button" type="button" data-tool="wand" aria-label="Auto tune">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 4 5 14l5 5L20 9Z" />
+                  <path d="m14 5 5 5M4 4h.01M9 2h.01M3 9h.01M20 16h.01M16 21h.01" />
                 </svg>
               </button>
               <button class="tool-button active" type="button" data-tool="look" aria-label="Look">
