@@ -1,0 +1,46 @@
+diff --git a/wasm/CMakeLists.txt b/wasm/CMakeLists.txt
+--- a/wasm/CMakeLists.txt
++++ b/wasm/CMakeLists.txt
+@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD 17)
+ set(CMAKE_CXX_STANDARD_REQUIRED ON)
+ set(CMAKE_CXX_EXTENSIONS OFF)
+ 
++set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto -msimd128")
++set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -O3 -flto -msimd128")
++
+ # libultrahdr build options. We only want the core library built for WASM —
+ # no examples, tests, benchmarks, fuzzers, java bindings, install targets.
+ set(UHDR_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+diff --git a/wasm/src/bindings.cpp b/wasm/src/bindings.cpp
+index f7e1e05..c4500d4 100644
+--- a/wasm/src/bindings.cpp
++++ b/wasm/src/bindings.cpp
+@@ -477,19 +477,19 @@ val encodeUltraHdr(const val& sdrBuffer, const val& hdrBuffer,
+ 
+   EncoderHandle enc;
+ 
+-  uhdr_compressed_image_t baseImg{};
+-  baseImg.data = sdr.data();
+-  baseImg.data_sz = sdr.size();
+-  baseImg.capacity = sdr.size();
+-  baseImg.cg = UHDR_CG_UNSPECIFIED;
+-  baseImg.ct = UHDR_CT_UNSPECIFIED;
+-  baseImg.range = UHDR_CR_UNSPECIFIED;
+-  throwOnError(uhdr_enc_set_compressed_image(enc.get(), &baseImg, UHDR_BASE_IMG),
++  uhdr_compressed_image_t sdrImg{};
++  sdrImg.data = sdr.data();
++  sdrImg.data_sz = sdr.size();
++  sdrImg.capacity = sdr.size();
++  sdrImg.cg = UHDR_CG_BT_709;
++  sdrImg.ct = UHDR_CT_SRGB;
++  sdrImg.range = UHDR_CR_FULL_RANGE;
++  throwOnError(uhdr_enc_set_compressed_image(enc.get(), &sdrImg, UHDR_SDR_IMG),
+                "uhdr_enc_set_compressed_image");
+ 
+   uhdr_raw_image_t hdrRaw{};
+   hdrRaw.fmt = UHDR_IMG_FMT_64bppRGBAHalfFloat;
+-  hdrRaw.cg = UHDR_CG_BT_2100;
++  hdrRaw.cg = UHDR_CG_BT_709;
+   hdrRaw.ct = UHDR_CT_LINEAR;
+   hdrRaw.range = UHDR_CR_FULL_RANGE;
+   hdrRaw.w = dims.width;

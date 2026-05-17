@@ -21,6 +21,12 @@ https://holohdr.com/
 
 ## Run Locally
 
+Clone submodules before rebuilding the vendored Ultra HDR encoder:
+
+```bash
+git submodule update --init --recursive
+```
+
 Any static file server works:
 
 ```bash
@@ -48,6 +54,18 @@ application/wasm .wasm
 ```
 
 Ultra HDR JPEG export is handled in the browser with WebAssembly from `open-ultrahdr-wasm`, built from upstream `google/libultrahdr`.
+
+To build a clean deployable static directory:
+
+```bash
+make site
+```
+
+That writes the production files to `.build/site/` and excludes local-only source/build folders such as `third_party/`, `.git/`, and comparison scratch images. To publish with rsync:
+
+```bash
+make publish DEPLOY_TARGET=user@example.com:/absolute/site/path/
+```
 
 ## WebAssembly Build Notes
 
@@ -88,19 +106,25 @@ For an equivalent manual `emcc`/`em++` setup, the relevant flags are:
 
 Do not enable pthreads unless the deployment also sends the required cross-origin isolation headers and you are willing to drop compatibility with browsers that do not expose `SharedArrayBuffer` in that context. The current build uses SIMD but no pthreads, which is the safer compatibility/performance tradeoff for HoloHDR.
 
-After rebuilding, replace:
+The reproducible rebuild path is:
+
+```bash
+make wasm
+```
+
+This target initializes the `third_party/lib-open-ultrahdr` submodule, copies it into `.build/lib-open-ultrahdr/`, applies `vendor/open-ultrahdr/patches/0001-preserve-sdr-intent.patch`, runs the upstream Emscripten build, and replaces:
 
 ```text
 vendor/open-ultrahdr/open_ultrahdr.js
 vendor/open-ultrahdr/open_ultrahdr.wasm
 ```
 
+The HoloHDR patch is important: it passes the browser-created JPEG to libultrahdr as the SDR intent (`UHDR_SDR_IMG`) and marks the SDR/HDR buffers as BT.709/sRGB-compatible. Without that patch, neutral Ultra HDR output can shift darker and more saturated because libultrahdr treats the input JPEG as a base image and interprets the HDR buffer through the wrong color path.
+
 Then verify:
 
 ```bash
-node --check app.js
-node --check ultrahdr-worker.js
-python3 -m json.tool manifest.webmanifest >/dev/null
+make verify
 ```
 
 ## Export Behavior
