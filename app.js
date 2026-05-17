@@ -92,8 +92,20 @@ const state = {
   previewSource: null,
   previewMode: "hdr",
   peekingOriginal: false,
+  viewScale: 1,
+  viewX: 0,
+  viewY: 0,
   settings: { ...presets.vibrant },
   renderToken: 0,
+};
+
+const gesture = {
+  pointers: new Map(),
+  longPressTimer: 0,
+  longPressStart: null,
+  panStart: null,
+  pinchStart: null,
+  suppressClick: false,
 };
 
 const fileInput = document.getElementById("fileInput");
@@ -162,12 +174,17 @@ document.querySelectorAll(".tool-button").forEach((button) => {
   });
 });
 previewCanvas.addEventListener("click", () => {
+  if (gesture.suppressClick) {
+    gesture.suppressClick = false;
+    return;
+  }
   if (window.matchMedia("(max-width: 860px)").matches) setControlsOpen(false);
 });
-previewCanvas.addEventListener("pointerdown", beginOriginalPeek);
-previewCanvas.addEventListener("pointerup", endOriginalPeek);
-previewCanvas.addEventListener("pointercancel", endOriginalPeek);
-previewCanvas.addEventListener("pointerleave", endOriginalPeek);
+previewCanvas.addEventListener("pointerdown", beginPreviewGesture);
+previewCanvas.addEventListener("pointermove", updatePreviewGesture);
+previewCanvas.addEventListener("pointerup", endPreviewGesture);
+previewCanvas.addEventListener("pointercancel", endPreviewGesture);
+previewCanvas.addEventListener("pointerleave", endPreviewGesture);
 previewCanvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
 function buildControls() {
@@ -229,6 +246,7 @@ async function loadImageDataUrl(dataUrl, sourceName) {
   state.sourceName = sourceName || "image";
   state.previewSource = makeSourceCanvas(img, PREVIEW_MAX_SIDE);
   state.peekingOriginal = false;
+  resetImageTransform();
 
   imageMeta.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
   emptyState.style.display = "none";
@@ -275,6 +293,7 @@ async function clearImage() {
   state.sourceName = "image";
   state.previewSource = null;
   state.peekingOriginal = false;
+  resetImageTransform();
   imageMeta.textContent = "No image loaded";
   previewCanvas.style.display = "none";
   emptyState.style.display = "grid";
@@ -302,18 +321,154 @@ function setPreviewMode(mode) {
   });
 }
 
-function beginOriginalPeek(event) {
+function beginPreviewGesture(event) {
   if (!state.previewSource || event.button > 0) return;
-  state.peekingOriginal = true;
+  event.preventDefault();
   previewCanvas.setPointerCapture?.(event.pointerId);
-  renderPreview();
+
+  gesture.pointers.set(event.pointerId, pointFromEvent(event));
+  clearLongPressTimer();
+
+  if (gesture.pointers.size === 1) {
+    const point = pointFromEvent(event);
+    gesture.longPressStart = point;
+    gesture.panStart = {
+      pointer: point,
+      x: state.viewX,
+      y: state.viewY,
+    };
+    gesture.longPressTimer = window.setTimeout(() => {
+      if (gesture.pointers.size !== 1 || !state.previewSource) return;
+      state.peekingOriginal = true;
+      gesture.suppressClick = true;
+      renderPreview();
+    }, 1000);
+    return;
+  }
+
+  if (gesture.pointers.size === 2) {
+    clearLongPressTimer();
+    stopOriginalPeek();
+    gesture.pinchStart = makePinchStart();
+  }
 }
 
-function endOriginalPeek(event) {
+function updatePreviewGesture(event) {
+  if (!gesture.pointers.has(event.pointerId)) return;
+  event.preventDefault();
+  const point = pointFromEvent(event);
+  gesture.pointers.set(event.pointerId, point);
+
+  if (gesture.pointers.size >= 2) {
+    clearLongPressTimer();
+    stopOriginalPeek();
+    updatePinch();
+    gesture.suppressClick = true;
+    return;
+  }
+
+  const start = gesture.longPressStart;
+  if (!start) return;
+  const dx = point.x - start.x;
+  const dy = point.y - start.y;
+  const moved = Math.hypot(dx, dy);
+  if (moved > 8) {
+    clearLongPressTimer();
+    stopOriginalPeek();
+  }
+
+  if (state.viewScale > 1 && gesture.panStart && moved > 2) {
+    state.viewX = gesture.panStart.x + (point.x - gesture.panStart.pointer.x);
+    state.viewY = gesture.panStart.y + (point.y - gesture.panStart.pointer.y);
+    applyImageTransform();
+    gesture.suppressClick = true;
+  }
+}
+
+function endPreviewGesture(event) {
+  if (!gesture.pointers.has(event.pointerId)) return;
+  event.preventDefault();
+  previewCanvas.releasePointerCapture?.(event.pointerId);
+  gesture.pointers.delete(event.pointerId);
+  clearLongPressTimer();
+  stopOriginalPeek();
+
+  if (gesture.pointers.size === 1) {
+    const [point] = gesture.pointers.values();
+    gesture.longPressStart = point;
+    gesture.panStart = {
+      pointer: point,
+      x: state.viewX,
+      y: state.viewY,
+    };
+    gesture.pinchStart = null;
+    return;
+  }
+
+  gesture.longPressStart = null;
+  gesture.panStart = null;
+  gesture.pinchStart = null;
+  if (state.viewScale <= 1.01) resetImageTransform();
+}
+
+function updatePinch() {
+  if (!gesture.pinchStart || gesture.pointers.size < 2) return;
+  const points = [...gesture.pointers.values()];
+  const distance = pointDistance(points[0], points[1]);
+  if (distance <= 0) return;
+  const center = pointCenter(points[0], points[1]);
+  state.viewScale = clamp(distance / gesture.pinchStart.distance * gesture.pinchStart.scale, 1, 5);
+  state.viewX = gesture.pinchStart.x + (center.x - gesture.pinchStart.center.x);
+  state.viewY = gesture.pinchStart.y + (center.y - gesture.pinchStart.center.y);
+  applyImageTransform();
+}
+
+function makePinchStart() {
+  const points = [...gesture.pointers.values()];
+  return {
+    distance: pointDistance(points[0], points[1]),
+    center: pointCenter(points[0], points[1]),
+    scale: state.viewScale,
+    x: state.viewX,
+    y: state.viewY,
+  };
+}
+
+function stopOriginalPeek() {
   if (!state.peekingOriginal) return;
   state.peekingOriginal = false;
-  previewCanvas.releasePointerCapture?.(event.pointerId);
   schedulePreview();
+}
+
+function clearLongPressTimer() {
+  window.clearTimeout(gesture.longPressTimer);
+  gesture.longPressTimer = 0;
+}
+
+function resetImageTransform() {
+  state.viewScale = 1;
+  state.viewX = 0;
+  state.viewY = 0;
+  applyImageTransform();
+}
+
+function applyImageTransform() {
+  previewCanvas.style.transform = `translate3d(${state.viewX}px, ${state.viewY}px, 0) scale(${state.viewScale})`;
+}
+
+function pointFromEvent(event) {
+  return { x: event.clientX, y: event.clientY };
+}
+
+function pointDistance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function pointCenter(a, b) {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  };
 }
 
 function schedulePreview() {
@@ -330,11 +485,15 @@ function renderPreview() {
   previewCanvas.width = source.width;
   previewCanvas.height = source.height;
   previewCtx.drawImage(source, 0, 0);
-  if (state.peekingOriginal) return;
+  if (state.peekingOriginal) {
+    applyImageTransform();
+    return;
+  }
 
   const imageData = previewCtx.getImageData(0, 0, source.width, source.height);
   processPixels(imageData.data, state.settings, state.previewMode);
   previewCtx.putImageData(imageData, 0, 0);
+  applyImageTransform();
 }
 
 async function exportProcessed(kind) {
