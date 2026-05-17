@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517r";
+const STATIC_ASSET_VERSION = "20260517s";
 const HDR_COLOR_BASE_STRENGTH = 0.18;
 const HDR_COLOR_MAX_DELTA = 0.28;
 const HDR_COLOR_RESPONSE_FLOOR = 0.06;
@@ -158,7 +158,7 @@ const presets = {
     highlightThreshold: 0.26,
     highlightSoftness: 0.68,
     highlightPower: 0.78,
-    hdrSaturation: 1.22,
+    hdrSaturation: 1.06,
     gainmapGamma: 0.9,
   },
   holosomnia: {
@@ -172,7 +172,7 @@ const presets = {
     highlightThreshold: 0.28,
     highlightSoftness: 0.62,
     highlightPower: 0.85,
-    hdrSaturation: 1.26,
+    hdrSaturation: 1.08,
     gainmapGamma: 0.9,
   },
   instagram_safe: {
@@ -186,7 +186,7 @@ const presets = {
     highlightThreshold: 0.55,
     highlightSoftness: 0.35,
     highlightPower: 1.25,
-    hdrSaturation: 1.08,
+    hdrSaturation: 1.02,
     gainmapGamma: 1,
   },
   instagram_bright: {
@@ -200,7 +200,7 @@ const presets = {
     highlightThreshold: 0.34,
     highlightSoftness: 0.52,
     highlightPower: 0.95,
-    hdrSaturation: 1.14,
+    hdrSaturation: 1.04,
     gainmapGamma: 0.95,
   },
   instagram_blast: {
@@ -214,7 +214,7 @@ const presets = {
     highlightThreshold: 0.24,
     highlightSoftness: 0.66,
     highlightPower: 0.76,
-    hdrSaturation: 1.28,
+    hdrSaturation: 1.08,
     gainmapGamma: 0.85,
   },
 };
@@ -826,7 +826,7 @@ function makeAutoSettings(mode, analysis) {
     highlightThreshold: clamp(highStart, 0.24, 0.58),
     highlightSoftness: clamp(0.46 + analysis.brightFraction * 0.62 + (flatImage ? 0.08 : 0), 0.36, 0.68),
     highlightPower: clamp(1.04 + analysis.brightFraction * 0.55 - (flatImage ? 0.12 : 0), 0.82, 1.38),
-    hdrSaturation: clamp(1.06 + (0.22 - analysis.highlightSat) * 0.18, 1, 1.16),
+    hdrSaturation: clamp(1.02 + (0.2 - analysis.highlightSat) * 0.08, 1, 1.06),
     gainmapGamma: clamp(1.02 + analysis.brightFraction * 0.2, 0.88, 1.18),
   };
 
@@ -838,7 +838,7 @@ function makeAutoSettings(mode, analysis) {
 
   if (mode === "vibrant") {
     settings.sdrSaturation += 0.09;
-    settings.hdrSaturation += 0.05;
+    settings.hdrSaturation += 0.02;
     settings.hdrBrightness += 0.02;
     settings.sdrShadows += 0.04;
     settings.highlightThreshold -= 0.035;
@@ -857,7 +857,7 @@ function makeAutoSettings(mode, analysis) {
     settings.highlightThreshold -= 0.055;
     settings.highlightSoftness += 0.08;
     settings.highlightPower -= 0.18;
-    settings.hdrSaturation += 0.06;
+    settings.hdrSaturation += 0.025;
     settings.sdrHighlights -= 0.04;
     settings.gainmapGamma -= 0.08;
   } else if (mode === "shadows") {
