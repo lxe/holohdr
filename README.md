@@ -42,7 +42,7 @@ Static deployment target:
 https://holosomnia.com/hdr/
 ```
 
-The Ultra HDR JPEG button calls `./api/export-ultrahdr`, which is provided by `app_server.py` during local development. A static nginx deployment does not provide that endpoint unless a backend route is added separately.
+The Ultra HDR JPEG button requires `./api/export-ultrahdr`, which is provided by `app_server.py` during local development. A static nginx deployment does not provide that endpoint unless a backend route is added separately, so the hosted static app disables Ultra HDR export.
 
 ## Export Behavior
 
@@ -53,3 +53,7 @@ The Ultra HDR JPEG button calls `./api/export-ultrahdr`, which is provided by `a
 ## Persistence
 
 The browser stores the last loaded image and editor state in IndexedDB, so refreshing restores the previous session. Saved presets are stored in `localStorage` on the same browser/device.
+
+## Privacy
+
+The static hosted app does not upload images, presets, exports, or slider settings. It does not use cookies, analytics, advertising scripts, or tracking pixels. Browser storage is used only on the local device for session restore and saved presets. The local development server has an optional Ultra HDR export endpoint; the hosted static app does not enable that path.

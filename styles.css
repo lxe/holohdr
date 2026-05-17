@@ -248,6 +248,95 @@ select {
   color: #ff9a9f;
 }
 
+.menu-help {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 820;
+}
+
+.info-overlay {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+  background: rgba(5, 5, 5, 0.72);
+  backdrop-filter: blur(18px) saturate(1.1);
+}
+
+.info-overlay[hidden] {
+  display: none;
+}
+
+.info-sheet {
+  position: relative;
+  width: min(680px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  border-radius: 14px;
+  background: rgba(18, 18, 17, 0.96);
+  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.62);
+  -webkit-overflow-scrolling: touch;
+}
+
+.info-close {
+  position: sticky;
+  top: 10px;
+  z-index: 1;
+  float: right;
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  margin: 10px 10px 0 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.info-close svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.info-content {
+  padding: 26px 24px 30px;
+}
+
+.info-kicker {
+  margin: 0 0 7px;
+  color: var(--warm);
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.info-content h1 {
+  margin: 0 48px 14px 0;
+  color: var(--text);
+  font-size: 28px;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.info-content h2 {
+  margin: 22px 0 7px;
+  color: var(--text);
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+.info-content p {
+  margin: 0 0 10px;
+  color: rgba(246, 242, 234, 0.72);
+  font-size: 14px;
+  line-height: 1.48;
+}
+
 .wand-section.active {
   gap: 8px;
 }
@@ -720,6 +809,26 @@ input[type="range"]::-moz-range-thumb {
   #exportGain {
     min-height: 36px;
     padding: 0 8px;
+    font-size: 13px;
+  }
+
+  .info-overlay {
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .info-sheet {
+    border-radius: 12px;
+  }
+
+  .info-content {
+    padding: 23px 18px 26px;
+  }
+
+  .info-content h1 {
+    font-size: 24px;
+  }
+
+  .info-content p {
     font-size: 13px;
   }
 }

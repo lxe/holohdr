@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#171717" />
     <title>HoloHDR</title>
-    <link rel="manifest" href="./manifest.webmanifest?v=20260517b" />
-    <link rel="stylesheet" href="./styles.css?v=20260517b" />
+    <link rel="manifest" href="./manifest.webmanifest?v=20260517c" />
+    <link rel="stylesheet" href="./styles.css?v=20260517c" />
   </head>
   <body>
     <main class="app-shell">
@@ -34,6 +34,9 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" />
                   </svg>
+                </button>
+                <button id="menuHelp" class="menu-icon-action menu-help" type="button" aria-label="About HoloHDR">
+                  <span aria-hidden="true">?</span>
                 </button>
               </div>
 
@@ -228,6 +231,47 @@
       </section>
     </main>
 
-    <script src="./app.js?v=20260517b" type="module"></script>
+    <section id="helpOverlay" class="info-overlay" aria-labelledby="helpTitle" aria-modal="true" role="dialog" hidden>
+      <article class="info-sheet">
+        <button id="closeHelp" class="info-close" type="button" aria-label="Close about panel">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+
+        <div class="info-content">
+          <p class="info-kicker">HoloHDR</p>
+          <h1 id="helpTitle">Local HDR-style image tuning</h1>
+          <p>
+            HoloHDR is a browser tool for taking an SDR image, previewing brighter HDR-style treatment, and exporting an adjusted JPEG or gain-mask image. It is built for quick phone workflows: open an image, use the wand or sliders, compare against the original, save presets, and export.
+          </p>
+
+          <h2>What It Is For</h2>
+          <p>
+            The controls help recover color and brightness in images that look too flat, muted, or dark after social upload. You can tune shadows, highlights, color, HDR headroom, and gain-map behavior while seeing the result immediately.
+          </p>
+
+          <h2>Privacy</h2>
+          <p>
+            On this hosted static version, your image stays in your browser. HoloHDR does not upload your image, slider settings, saved presets, or exports to a server. The page only downloads the app files needed to run.
+          </p>
+          <p>
+            The app does not use analytics, tracking pixels, advertising scripts, or cookies. Your last opened image and editor state are stored on your device using browser storage so refresh can restore your session. Saved presets are also stored locally on your device.
+          </p>
+
+          <h2>Exports</h2>
+          <p>
+            JPEG and gain-mask exports are rendered locally in the browser. Ultra HDR export requires the separate local Python backend used during development, so it is disabled on the static hosted page.
+          </p>
+
+          <h2>Terms</h2>
+          <p>
+            HoloHDR is provided as-is for image editing and experimentation. You are responsible for the images you load, edit, and export. Browser storage can be cleared by you or by the browser, so saved presets and restored sessions should not be treated as permanent backup storage.
+          </p>
+        </div>
+      </article>
+    </section>
+
+    <script src="./app.js?v=20260517c" type="module"></script>
   </body>
 </html>

@@ -225,6 +225,7 @@ const state = {
   viewY: 0,
   settings: { ...neutralSettings },
   renderToken: 0,
+  ultraHdrAvailable: false,
 };
 
 const gesture = {
@@ -265,12 +266,16 @@ const exportJpeg = document.getElementById("exportJpeg");
 const exportGain = document.getElementById("exportGain");
 const menuOpen = document.getElementById("menuOpen");
 const menuClear = document.getElementById("menuClear");
+const menuHelp = document.getElementById("menuHelp");
+const helpOverlay = document.getElementById("helpOverlay");
+const closeHelp = document.getElementById("closeHelp");
 const previewCtx = previewCanvas.getContext("2d", { willReadFrequently: true });
 
 renderPresetOptions();
 buildControls();
 applySettingsToControls();
 updateRailFades();
+checkExportCapabilities();
 restoreSession();
 
 fileInput.addEventListener("change", async (event) => {
@@ -301,8 +306,16 @@ exportSize.addEventListener("change", saveSessionSoon);
 emptyState.addEventListener("click", openImagePicker);
 menuOpen.addEventListener("click", openImagePicker);
 menuClear.addEventListener("click", clearImage);
+menuHelp.addEventListener("click", openHelpOverlay);
+closeHelp.addEventListener("click", closeHelpOverlay);
+helpOverlay.addEventListener("click", (event) => {
+  if (event.target === helpOverlay) closeHelpOverlay();
+});
 toolRail.addEventListener("scroll", updateRailFades, { passive: true });
 window.addEventListener("resize", updateRailFades);
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !helpOverlay.hidden) closeHelpOverlay();
+});
 document.querySelectorAll("[data-auto-mode]").forEach((button) => {
   button.addEventListener("click", () => applyAutoTune(button.dataset.autoMode));
 });
@@ -573,6 +586,16 @@ function setActiveTool(tool) {
   });
 }
 
+function openHelpOverlay() {
+  helpOverlay.hidden = false;
+  closeHelp.focus();
+}
+
+function closeHelpOverlay() {
+  helpOverlay.hidden = true;
+  menuHelp.focus();
+}
+
 function openImagePicker() {
   fileInput.click();
 }
@@ -599,10 +622,23 @@ async function clearImage() {
 }
 
 function setImageActionsEnabled(enabled) {
-  exportUltra.disabled = !enabled;
+  exportUltra.disabled = !enabled || !state.ultraHdrAvailable;
   exportJpeg.disabled = !enabled;
   exportGain.disabled = !enabled;
   menuClear.disabled = !enabled;
+}
+
+async function checkExportCapabilities() {
+  try {
+    const response = await fetch("./api/capabilities", { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const capabilities = await response.json();
+    state.ultraHdrAvailable = Boolean(capabilities.ultraHdr);
+  } catch {
+    state.ultraHdrAvailable = false;
+  }
+  exportUltra.title = state.ultraHdrAvailable ? "" : "Ultra HDR export requires the local Python server.";
+  setImageActionsEnabled(Boolean(state.sourceImage));
 }
 
 function setPreviewMode(mode) {

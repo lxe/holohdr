@@ -57,6 +57,10 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         parsed = urlparse(self.path)
+        if parsed.path == "/api/capabilities":
+            self._serve_capabilities(head_only=False)
+            return
+
         if parsed.path in ("", "/", "/index.html"):
             self._serve_index(head_only=False)
             return
@@ -68,6 +72,10 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         parsed = urlparse(self.path)
+        if parsed.path == "/api/capabilities":
+            self._serve_capabilities(head_only=True)
+            return
+
         if parsed.path in ("", "/", "/index.html"):
             self._serve_index(head_only=True)
             return
@@ -146,6 +154,15 @@ class Handler(SimpleHTTPRequestHandler):
 
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        if not head_only:
+            self.wfile.write(data)
+
+    def _serve_capabilities(self, head_only):
+        data = json.dumps({"ultraHdr": True}).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         if not head_only:
