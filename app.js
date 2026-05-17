@@ -312,14 +312,16 @@ function buildControls() {
     card.className = "slider-card";
     card.innerHTML = `
       <div class="slider-head">
-        <div class="slider-label-row">
-          <label for="${key}">${label}</label>
-          <button class="help-button" type="button" aria-expanded="false" aria-label="${label} help">?</button>
+        <div class="slider-label-block">
+          <div class="slider-label-row">
+            <label for="${key}">${label}</label>
+            <button class="help-button" type="button" aria-expanded="false" aria-label="${label} help">?</button>
+          </div>
+          <p class="slider-description" hidden>${description}</p>
         </div>
         <span class="slider-value" id="${key}Value"></span>
       </div>
       <input id="${key}" type="range" min="${min}" max="${max}" step="${step}" />
-      <p class="slider-description" hidden>${description}</p>
     `;
     sliderStacks[group].appendChild(card);
 
