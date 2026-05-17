@@ -479,6 +479,21 @@ input[type="range"]::-moz-range-thumb {
 #exportJpeg,
 #exportGain {
   min-height: 38px;
+  gap: 6px;
+  padding: 0 9px;
+}
+
+#exportUltra svg,
+#exportJpeg svg,
+#exportGain svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
 }
 
 #exportUltra {
