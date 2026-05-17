@@ -2,7 +2,10 @@ const PREVIEW_MAX_SIDE = 1800;
 const EXPORT_MIME = "image/jpeg";
 const JPEG_QUALITY = 0.96;
 const ORIGINAL_PEEK_DELAY_MS = 10;
-const STATIC_ASSET_VERSION = "20260517e";
+const DOUBLE_TAP_MS = 280;
+const DOUBLE_TAP_DISTANCE = 28;
+const TAP_MOVE_TOLERANCE = 12;
+const STATIC_ASSET_VERSION = "20260517f";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -236,6 +239,9 @@ const gesture = {
   longPressStart: null,
   panStart: null,
   pinchStart: null,
+  lastTapAt: 0,
+  lastTapPoint: null,
+  zoomAnimationTimer: 0,
   suppressClick: false,
 };
 
@@ -896,9 +902,17 @@ function endPreviewGesture(event) {
   if (!gesture.pointers.has(event.pointerId)) return;
   event.preventDefault();
   previewCanvas.releasePointerCapture?.(event.pointerId);
+  const wasSinglePointer = gesture.pointers.size === 1;
+  const start = gesture.longPressStart;
+  const point = pointFromEvent(event);
+  const tapCandidate = wasSinglePointer && start && pointDistance(start, point) <= TAP_MOVE_TOLERANCE && !gesture.pinchStart;
   gesture.pointers.delete(event.pointerId);
   clearLongPressTimer();
   stopOriginalPeek();
+
+  if (tapCandidate) {
+    handlePreviewTap(point);
+  }
 
   if (gesture.pointers.size === 1) {
     const [point] = gesture.pointers.values();
@@ -916,6 +930,23 @@ function endPreviewGesture(event) {
   gesture.panStart = null;
   gesture.pinchStart = null;
   if (state.viewScale <= 1.01) resetImageTransform();
+}
+
+function handlePreviewTap(point) {
+  const now = performance.now();
+  const doubleTap =
+    gesture.lastTapPoint &&
+    now - gesture.lastTapAt <= DOUBLE_TAP_MS &&
+    pointDistance(point, gesture.lastTapPoint) <= DOUBLE_TAP_DISTANCE;
+
+  gesture.lastTapAt = now;
+  gesture.lastTapPoint = point;
+
+  if (!doubleTap) return;
+  gesture.lastTapAt = 0;
+  gesture.lastTapPoint = null;
+  gesture.suppressClick = true;
+  toggleCoverZoom();
 }
 
 function updatePinch() {
@@ -952,14 +983,48 @@ function clearLongPressTimer() {
   gesture.longPressTimer = 0;
 }
 
-function resetImageTransform() {
+function resetImageTransform(animated = false) {
   state.viewScale = 1;
   state.viewX = 0;
   state.viewY = 0;
-  applyImageTransform();
+  applyImageTransform(animated);
 }
 
-function applyImageTransform() {
+function toggleCoverZoom() {
+  if (state.viewScale > 1.01) {
+    resetImageTransform(true);
+    return;
+  }
+
+  const coverScale = getCoverScale();
+  if (coverScale <= 1.01) {
+    resetImageTransform(true);
+    return;
+  }
+
+  state.viewScale = coverScale;
+  state.viewX = 0;
+  state.viewY = 0;
+  applyImageTransform(true);
+  if (window.matchMedia("(max-width: 860px)").matches) setControlsOpen(false);
+}
+
+function getCoverScale() {
+  const frame = previewCanvas.parentElement;
+  const width = previewCanvas.clientWidth;
+  const height = previewCanvas.clientHeight;
+  if (!frame || width <= 0 || height <= 0) return 1;
+  return clamp(Math.max(frame.clientWidth / width, frame.clientHeight / height), 1, 5);
+}
+
+function applyImageTransform(animated = false) {
+  if (animated) {
+    previewCanvas.classList.add("zoom-animating");
+    window.clearTimeout(gesture.zoomAnimationTimer);
+    gesture.zoomAnimationTimer = window.setTimeout(() => {
+      previewCanvas.classList.remove("zoom-animating");
+    }, 190);
+  }
   previewCanvas.style.transform = `translate3d(${state.viewX}px, ${state.viewY}px, 0) scale(${state.viewScale})`;
 }
 

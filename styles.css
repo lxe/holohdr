@@ -139,6 +139,10 @@ select {
   user-select: none;
 }
 
+#previewCanvas.zoom-animating {
+  transition: transform 170ms ease;
+}
+
 .empty-state {
   width: min(320px, 88vw);
   min-height: 180px;
