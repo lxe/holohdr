@@ -124,7 +124,8 @@ select {
   touch-action: none;
 }
 
-#previewCanvas {
+#previewCanvas,
+#hdrPreviewImage {
   max-width: 100%;
   max-height: 100%;
   width: auto;
@@ -137,9 +138,16 @@ select {
   will-change: transform;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
 }
 
-#previewCanvas.zoom-animating {
+#hdrPreviewImage {
+  dynamic-range-limit: no-limit;
+  object-fit: contain;
+}
+
+#previewCanvas.zoom-animating,
+#hdrPreviewImage.zoom-animating {
   transition: transform 170ms ease;
 }
 
@@ -618,7 +626,8 @@ input[type="range"]::-moz-range-thumb {
     background: #050505;
   }
 
-  #previewCanvas {
+  #previewCanvas,
+  #hdrPreviewImage {
     max-width: 100vw;
     max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 64px);
     box-shadow: none;

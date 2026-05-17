@@ -5,7 +5,8 @@ const ORIGINAL_PEEK_DELAY_MS = 10;
 const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
-const STATIC_ASSET_VERSION = "20260517g";
+const HDR_PREVIEW_DEBOUNCE_MS = 160;
+const STATIC_ASSET_VERSION = "20260517h";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -230,6 +231,9 @@ const state = {
   viewY: 0,
   settings: { ...neutralSettings },
   renderToken: 0,
+  hdrPreviewUrl: null,
+  hdrPreviewKey: "",
+  hdrPreviewTimer: 0,
   ultraHdrAvailable: false,
 };
 
@@ -247,6 +251,7 @@ const gesture = {
 
 const fileInput = document.getElementById("fileInput");
 const previewCanvas = document.getElementById("previewCanvas");
+const hdrPreviewImage = document.getElementById("hdrPreviewImage");
 const emptyState = document.getElementById("emptyState");
 const imageMeta = document.getElementById("imageMeta");
 const controlsPanel = document.getElementById("controlsPanel");
@@ -337,19 +342,21 @@ document.querySelectorAll(".tool-button").forEach((button) => {
     window.setTimeout(updateRailFades, 180);
   });
 });
-previewCanvas.addEventListener("click", () => {
-  if (gesture.suppressClick) {
-    gesture.suppressClick = false;
-    return;
-  }
-  if (window.matchMedia("(max-width: 860px)").matches) setControlsOpen(false);
-});
-previewCanvas.addEventListener("pointerdown", beginPreviewGesture);
-previewCanvas.addEventListener("pointermove", updatePreviewGesture);
-previewCanvas.addEventListener("pointerup", endPreviewGesture);
-previewCanvas.addEventListener("pointercancel", endPreviewGesture);
-previewCanvas.addEventListener("pointerleave", endPreviewGesture);
-previewCanvas.addEventListener("contextmenu", (event) => event.preventDefault());
+for (const target of [previewCanvas, hdrPreviewImage]) {
+  target.addEventListener("click", () => {
+    if (gesture.suppressClick) {
+      gesture.suppressClick = false;
+      return;
+    }
+    if (window.matchMedia("(max-width: 860px)").matches) setControlsOpen(false);
+  });
+  target.addEventListener("pointerdown", beginPreviewGesture);
+  target.addEventListener("pointermove", updatePreviewGesture);
+  target.addEventListener("pointerup", endPreviewGesture);
+  target.addEventListener("pointercancel", endPreviewGesture);
+  target.addEventListener("pointerleave", endPreviewGesture);
+  target.addEventListener("contextmenu", (event) => event.preventDefault());
+}
 
 function buildControls() {
   Object.values(sliderStacks).forEach((stack) => {
@@ -553,11 +560,12 @@ async function loadImageDataUrl(dataUrl, sourceName) {
   state.sourceName = sourceName || "image";
   state.previewSource = makeSourceCanvas(img, PREVIEW_MAX_SIDE);
   state.peekingOriginal = false;
+  clearHdrPreview();
   resetImageTransform();
 
   imageMeta.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
   emptyState.style.display = "none";
-  previewCanvas.style.display = "block";
+  showCanvasPreview();
   setImageActionsEnabled(true);
   setControlsOpen(false);
   schedulePreview();
@@ -615,9 +623,11 @@ async function clearImage() {
   state.sourceName = "image";
   state.previewSource = null;
   state.peekingOriginal = false;
+  clearHdrPreview();
   resetImageTransform();
   imageMeta.textContent = "No image loaded";
   previewCanvas.style.display = "none";
+  hdrPreviewImage.style.display = "none";
   emptyState.style.display = "grid";
   setImageActionsEnabled(false);
   setControlsOpen(false);
@@ -837,7 +847,7 @@ function summarizeAutoTune(label, analysis, settings) {
 function beginPreviewGesture(event) {
   if (!state.previewSource || event.button > 0) return;
   event.preventDefault();
-  previewCanvas.setPointerCapture?.(event.pointerId);
+  event.currentTarget.setPointerCapture?.(event.pointerId);
 
   gesture.pointers.set(event.pointerId, pointFromEvent(event));
   clearLongPressTimer();
@@ -901,7 +911,7 @@ function updatePreviewGesture(event) {
 function endPreviewGesture(event) {
   if (!gesture.pointers.has(event.pointerId)) return;
   event.preventDefault();
-  previewCanvas.releasePointerCapture?.(event.pointerId);
+  event.currentTarget.releasePointerCapture?.(event.pointerId);
   const wasSinglePointer = gesture.pointers.size === 1;
   const start = gesture.longPressStart;
   const point = pointFromEvent(event);
@@ -1010,22 +1020,27 @@ function toggleCoverZoom() {
 }
 
 function getCoverScale() {
-  const frame = previewCanvas.parentElement;
-  const width = previewCanvas.clientWidth;
-  const height = previewCanvas.clientHeight;
+  const element = activePreviewElement();
+  const frame = element.parentElement;
+  const width = element.clientWidth;
+  const height = element.clientHeight;
   if (!frame || width <= 0 || height <= 0) return 1;
   return clamp(Math.max(frame.clientWidth / width, frame.clientHeight / height), 1, 5);
 }
 
 function applyImageTransform(animated = false) {
+  const transform = `translate3d(${state.viewX}px, ${state.viewY}px, 0) scale(${state.viewScale})`;
   if (animated) {
     previewCanvas.classList.add("zoom-animating");
+    hdrPreviewImage.classList.add("zoom-animating");
     window.clearTimeout(gesture.zoomAnimationTimer);
     gesture.zoomAnimationTimer = window.setTimeout(() => {
       previewCanvas.classList.remove("zoom-animating");
+      hdrPreviewImage.classList.remove("zoom-animating");
     }, 190);
   }
-  previewCanvas.style.transform = `translate3d(${state.viewX}px, ${state.viewY}px, 0) scale(${state.viewScale})`;
+  previewCanvas.style.transform = transform;
+  hdrPreviewImage.style.transform = transform;
 }
 
 function pointFromEvent(event) {
@@ -1043,13 +1058,49 @@ function pointCenter(a, b) {
   };
 }
 
+function activePreviewElement() {
+  return hdrPreviewImage.style.display === "block" ? hdrPreviewImage : previewCanvas;
+}
+
+function showCanvasPreview() {
+  if (!state.previewSource) return;
+  previewCanvas.style.display = "block";
+  hdrPreviewImage.style.display = "none";
+  applyImageTransform();
+}
+
+function showHdrPreview() {
+  if (!state.previewSource || !hdrPreviewImage.src) return;
+  previewCanvas.style.display = "none";
+  hdrPreviewImage.style.display = "block";
+  applyImageTransform();
+}
+
+function clearHdrPreview() {
+  window.clearTimeout(state.hdrPreviewTimer);
+  state.hdrPreviewTimer = 0;
+  state.hdrPreviewKey = "";
+  if (state.hdrPreviewUrl) URL.revokeObjectURL(state.hdrPreviewUrl);
+  state.hdrPreviewUrl = null;
+  hdrPreviewImage.removeAttribute("src");
+  hdrPreviewImage.style.display = "none";
+}
+
 function schedulePreview() {
   if (!state.previewSource) return;
+  window.clearTimeout(state.hdrPreviewTimer);
   const token = ++state.renderToken;
   requestAnimationFrame(() => {
     if (token !== state.renderToken) return;
     renderPreview();
   });
+  if (state.previewMode === "hdr" && !state.peekingOriginal && state.ultraHdrAvailable) {
+    state.hdrPreviewTimer = window.setTimeout(() => {
+      renderTrueHdrPreview(token).catch((error) => {
+        console.warn("True HDR preview failed", error);
+      });
+    }, HDR_PREVIEW_DEBOUNCE_MS);
+  }
 }
 
 function renderPreview() {
@@ -1057,15 +1108,56 @@ function renderPreview() {
   previewCanvas.width = source.width;
   previewCanvas.height = source.height;
   previewCtx.drawImage(source, 0, 0);
+  showCanvasPreview();
   if (state.peekingOriginal) {
-    applyImageTransform();
     return;
   }
 
   const imageData = previewCtx.getImageData(0, 0, source.width, source.height);
   processPixels(imageData.data, state.settings, state.previewMode);
   previewCtx.putImageData(imageData, 0, 0);
-  applyImageTransform();
+}
+
+async function renderTrueHdrPreview(token) {
+  if (token !== state.renderToken || state.previewMode !== "hdr" || state.peekingOriginal || !state.previewSource) return;
+
+  const key = makeHdrPreviewKey();
+  if (state.hdrPreviewUrl && state.hdrPreviewKey === key) {
+    showHdrPreview();
+    return;
+  }
+
+  const [wasm, input] = await Promise.all([getUltraHdrWasm(), makeUltraHdrEncodeInput(PREVIEW_MAX_SIDE)]);
+  if (token !== state.renderToken || state.previewMode !== "hdr" || state.peekingOriginal || !state.previewSource) return;
+
+  const blob = encodeUltraHdrBlob(wasm, input);
+  const url = URL.createObjectURL(blob);
+  await loadHdrPreviewUrl(url);
+  if (token !== state.renderToken || state.previewMode !== "hdr" || state.peekingOriginal || !state.previewSource) {
+    URL.revokeObjectURL(url);
+    return;
+  }
+
+  if (state.hdrPreviewUrl) URL.revokeObjectURL(state.hdrPreviewUrl);
+  state.hdrPreviewUrl = url;
+  state.hdrPreviewKey = key;
+  hdrPreviewImage.src = url;
+  showHdrPreview();
+}
+
+function makeHdrPreviewKey() {
+  const source = state.previewSource;
+  return `${source.width}x${source.height}:${JSON.stringify(state.settings)}`;
+}
+
+function loadHdrPreviewUrl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("HDR preview decode failed"));
+    img.decoding = "async";
+    img.src = url;
+  });
 }
 
 async function exportProcessed(kind) {
@@ -1075,7 +1167,7 @@ async function exportProcessed(kind) {
   await nextFrame();
   if (token !== state.renderToken) return;
 
-  const maxSide = exportSize.value === "full" ? Infinity : exportSize.value === "preview" ? PREVIEW_MAX_SIDE : Number(exportSize.value);
+  const maxSide = selectedExportMaxSide();
   const source = makeSourceCanvas(state.sourceImage, maxSide);
   const canvas = document.createElement("canvas");
   canvas.width = source.width;
@@ -1102,15 +1194,7 @@ async function exportUltraHdr() {
     const [wasm, input] = await Promise.all([getUltraHdrWasm(), makeUltraHdrEncodeInput()]);
     if (token !== state.renderToken) return;
 
-    const encoded = wasm.encodeUltraHdr(new Uint8Array(input.sdrBuffer), input.hdrBuffer, {
-      baseQuality: 95,
-      gainMapQuality: 95,
-      targetHdrCapacity: clamp(Math.log2(Math.max(1, state.settings.hdrHeadroom)), 1, 6),
-      includeIsoMetadata: true,
-      includeUltrahdrV1: true,
-      gainMapScale: 1,
-    });
-    const blob = new Blob([encoded], { type: "image/jpeg" });
+    const blob = encodeUltraHdrBlob(wasm, input);
     downloadBlob(blob, `${state.sourceName}-ultrahdr.jpg`);
     setStatus(`Exported Ultra HDR JPEG ${input.width} x ${input.height}`);
   } catch (error) {
@@ -1131,8 +1215,25 @@ async function getUltraHdrWasm() {
   return ultraHdrWasmPromise;
 }
 
-async function makeUltraHdrEncodeInput() {
-  const maxSide = exportSize.value === "full" ? Infinity : exportSize.value === "preview" ? PREVIEW_MAX_SIDE : Number(exportSize.value);
+function selectedExportMaxSide() {
+  if (exportSize.value === "full") return Infinity;
+  if (exportSize.value === "preview") return PREVIEW_MAX_SIDE;
+  return Number(exportSize.value);
+}
+
+function encodeUltraHdrBlob(wasm, input) {
+  const encoded = wasm.encodeUltraHdr(new Uint8Array(input.sdrBuffer), input.hdrBuffer, {
+    baseQuality: 95,
+    gainMapQuality: 95,
+    targetHdrCapacity: clamp(Math.log2(Math.max(1, state.settings.hdrHeadroom)), 1, 6),
+    includeIsoMetadata: true,
+    includeUltrahdrV1: true,
+    gainMapScale: 1,
+  });
+  return new Blob([encoded], { type: "image/jpeg" });
+}
+
+async function makeUltraHdrEncodeInput(maxSide = selectedExportMaxSide()) {
   const source = makeSourceCanvas(state.sourceImage, maxSide);
   const canvas = document.createElement("canvas");
   canvas.width = source.width;
