@@ -12,6 +12,8 @@ Open `http://<machine-ip>:5177/` from another device on the same network or Tail
 
 The server redirects root and static asset requests to a `?v=` URL derived from the local app file mtimes, and sends no-store cache headers. That keeps mobile Safari from holding onto stale UI builds while iterating.
 
+The browser stores the last loaded image and editor state in IndexedDB, so refreshing the page restores the previous session.
+
 ## Current export behavior
 
 - `Export Ultra HDR` sends the image/settings to the local Python endpoint and saves a real Ultra HDR + ISO 21496 gain-map JPEG.

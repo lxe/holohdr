@@ -1,6 +1,10 @@
 const PREVIEW_MAX_SIDE = 1800;
 const EXPORT_MIME = "image/jpeg";
 const JPEG_QUALITY = 0.96;
+const SESSION_DB_NAME = "hdr-gainmap-tuner";
+const SESSION_DB_VERSION = 1;
+const SESSION_STORE = "session";
+const SESSION_KEY = "last";
 
 const sliders = [
   ["sdrExposure", "SDR exposure", -1, 1.5, 0.01],
@@ -101,6 +105,7 @@ const previewCtx = previewCanvas.getContext("2d", { willReadFrequently: true });
 
 buildControls();
 applySettingsToControls();
+restoreSession();
 
 fileInput.addEventListener("change", async (event) => {
   const [file] = event.target.files || [];
@@ -114,21 +119,21 @@ presetSelect.addEventListener("change", () => {
   state.settings = { ...preset };
   applySettingsToControls();
   schedulePreview();
+  saveSessionSoon();
 });
 
 document.querySelectorAll(".segment").forEach((button) => {
   button.addEventListener("click", () => {
-    state.previewMode = button.dataset.mode;
-    document.querySelectorAll(".segment").forEach((item) => {
-      item.classList.toggle("active", item === button);
-    });
+    setPreviewMode(button.dataset.mode);
     schedulePreview();
+    saveSessionSoon();
   });
 });
 
 exportJpeg.addEventListener("click", () => exportProcessed("jpeg"));
 exportGain.addEventListener("click", () => exportProcessed("gain"));
 exportUltra.addEventListener("click", () => exportUltraHdr());
+exportSize.addEventListener("change", saveSessionSoon);
 sheetToggle.addEventListener("click", () => setControlsOpen(!controlsPanel.classList.contains("open")));
 previewCanvas.addEventListener("click", () => {
   if (window.matchMedia("(max-width: 860px)").matches) setControlsOpen(false);
@@ -159,6 +164,7 @@ function buildControls() {
       presetSelect.value = "custom";
       updateValueLabel(key);
       schedulePreview();
+      saveSessionSoon();
     });
   }
 }
@@ -177,39 +183,55 @@ function updateValueLabel(key) {
 
 async function loadFile(file) {
   setStatus("Loading image...");
-  const url = URL.createObjectURL(file);
   try {
-    const img = new Image();
-    img.decoding = "async";
-    img.src = url;
-    await img.decode();
-
-    state.sourceImage = img;
-    state.sourceDataUrl = await fileToDataUrl(file);
-    state.sourceName = file.name.replace(/\.[^.]+$/, "") || "image";
-    state.previewSource = makeSourceCanvas(img, PREVIEW_MAX_SIDE);
-    state.peekingOriginal = false;
-
-    imageMeta.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
-    emptyState.style.display = "none";
-    previewCanvas.style.display = "block";
-    exportUltra.disabled = false;
-    exportJpeg.disabled = false;
-    exportGain.disabled = false;
-    setControlsOpen(false);
-    schedulePreview();
+    const dataUrl = await fileToDataUrl(file);
+    await loadImageDataUrl(dataUrl, file.name.replace(/\.[^.]+$/, "") || "image");
+    await saveSession();
     setStatus("Ready");
   } catch (error) {
     console.error(error);
     setStatus("Could not load that image.");
-  } finally {
-    URL.revokeObjectURL(url);
   }
+}
+
+async function loadImageDataUrl(dataUrl, sourceName) {
+  const img = await decodeImage(dataUrl);
+  state.sourceImage = img;
+  state.sourceDataUrl = dataUrl;
+  state.sourceName = sourceName || "image";
+  state.previewSource = makeSourceCanvas(img, PREVIEW_MAX_SIDE);
+  state.peekingOriginal = false;
+
+  imageMeta.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
+  emptyState.style.display = "none";
+  previewCanvas.style.display = "block";
+  exportUltra.disabled = false;
+  exportJpeg.disabled = false;
+  exportGain.disabled = false;
+  setControlsOpen(false);
+  schedulePreview();
+}
+
+function decodeImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Image decode failed"));
+    img.decoding = "async";
+    img.src = src;
+  });
 }
 
 function setControlsOpen(open) {
   controlsPanel.classList.toggle("open", open);
   sheetToggle.setAttribute("aria-expanded", String(open));
+}
+
+function setPreviewMode(mode) {
+  state.previewMode = mode;
+  document.querySelectorAll(".segment").forEach((item) => {
+    item.classList.toggle("active", item.dataset.mode === mode);
+  });
 }
 
 function beginOriginalPeek(event) {
@@ -448,6 +470,89 @@ function fileToDataUrl(file) {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+}
+
+let saveTimer = 0;
+
+function saveSessionSoon() {
+  window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(() => {
+    saveSession().catch((error) => {
+      console.warn("Could not save session", error);
+    });
+  }, 180);
+}
+
+async function saveSession() {
+  if (!state.sourceDataUrl) return;
+  await idbSet(SESSION_KEY, {
+    sourceDataUrl: state.sourceDataUrl,
+    sourceName: state.sourceName,
+    settings: state.settings,
+    previewMode: state.previewMode,
+    preset: presetSelect.value,
+    exportSize: exportSize.value,
+    savedAt: Date.now(),
+  });
+}
+
+async function restoreSession() {
+  try {
+    const session = await idbGet(SESSION_KEY);
+    if (!session?.sourceDataUrl) return;
+
+    setStatus("Restoring image...");
+    state.settings = { ...presets.vibrant, ...session.settings };
+    presetSelect.value = session.preset || "custom";
+    exportSize.value = session.exportSize || "full";
+    setPreviewMode(session.previewMode || "hdr");
+    applySettingsToControls();
+    await loadImageDataUrl(session.sourceDataUrl, session.sourceName);
+    setStatus("Restored");
+  } catch (error) {
+    console.warn("Could not restore session", error);
+    setStatus("Ready");
+  }
+}
+
+function openSessionDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(SESSION_DB_NAME, SESSION_DB_VERSION);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore(SESSION_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbGet(key) {
+  const db = await openSessionDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(SESSION_STORE, "readonly");
+      const request = tx.objectStore(SESSION_STORE).get(key);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function idbSet(key, value) {
+  const db = await openSessionDb();
+  try {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(SESSION_STORE, "readwrite");
+      tx.objectStore(SESSION_STORE).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
 }
 
 function nextFrame() {
