@@ -199,7 +199,7 @@ const presetLabels = {
   instagram_safe: "Instagram safe",
   instagram_bright: "Instagram bright",
   instagram_blast: "Instagram blast",
-  custom: "No preset",
+  custom: "Custom",
 };
 const presetOrder = ["custom", "vibrant", "holosomnia", "instagram_safe", "instagram_bright", "instagram_blast"];
 
@@ -368,7 +368,7 @@ function buildControls() {
     const input = document.getElementById(key);
     input.addEventListener("input", () => {
       state.settings[key] = Number(input.value);
-      presetSelect.value = "custom";
+      markSettingsCustom();
       updateValueLabel(key);
       schedulePreview();
       saveSessionSoon();
@@ -422,6 +422,7 @@ function applySelectedPreset() {
   const preset = getPresetSettings(presetSelect.value);
   if (!preset) return;
   state.settings = { ...neutralSettings, ...preset };
+  clearAutoSelection();
   applySettingsToControls();
   schedulePreview();
   saveSessionSoon();
@@ -446,7 +447,13 @@ function saveCurrentPreset() {
 
   storeCustomPresets();
   renderPresetOptions(`saved:${id}`);
+  clearAutoSelection();
   saveSessionSoon();
+}
+
+function markSettingsCustom() {
+  presetSelect.value = "custom";
+  clearAutoSelection();
 }
 
 function copyCurrentSettings() {
@@ -455,7 +462,7 @@ function copyCurrentSettings() {
 
 function getSuggestedPresetName() {
   const selected = presetSelect.options[presetSelect.selectedIndex]?.textContent?.trim();
-  if (selected && selected !== "No preset") return `${selected} copy`;
+  if (selected && selected !== "Custom") return `${selected} copy`;
   return "My preset";
 }
 
@@ -514,7 +521,7 @@ async function loadFile(file) {
 
 function resetAdjustmentsForNewImage() {
   state.settings = { ...neutralSettings };
-  presetSelect.value = "custom";
+  markSettingsCustom();
   applySettingsToControls();
 }
 
@@ -628,6 +635,12 @@ function applyAutoTune(mode) {
   const summary = summarizeAutoTune(label, analysis, settings);
   if (autoSummary) autoSummary.textContent = summary;
   setStatus(`${label} auto tune applied`);
+}
+
+function clearAutoSelection() {
+  document.querySelectorAll("[data-auto-mode].selected").forEach((button) => {
+    button.classList.remove("selected");
+  });
 }
 
 function analyzeImageForAutoTune() {
