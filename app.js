@@ -110,6 +110,20 @@ const sliders = [
   },
 ];
 
+const neutralSettings = {
+  sdrExposure: 0,
+  sdrContrast: 1,
+  sdrShadows: 0,
+  sdrHighlights: 0,
+  sdrSaturation: 1,
+  hdrHeadroom: 1,
+  highlightThreshold: 0.5,
+  highlightSoftness: 0.5,
+  highlightPower: 1,
+  hdrSaturation: 1,
+  gainmapGamma: 1,
+};
+
 const presets = {
   custom: null,
   vibrant: {
@@ -185,9 +199,9 @@ const presetLabels = {
   instagram_safe: "Instagram safe",
   instagram_bright: "Instagram bright",
   instagram_blast: "Instagram blast",
-  custom: "Custom",
+  custom: "No preset",
 };
-const presetOrder = ["vibrant", "holosomnia", "instagram_safe", "instagram_bright", "instagram_blast", "custom"];
+const presetOrder = ["custom", "vibrant", "holosomnia", "instagram_safe", "instagram_bright", "instagram_blast"];
 
 const autoModes = {
   balanced: "Even",
@@ -209,7 +223,7 @@ const state = {
   viewScale: 1,
   viewX: 0,
   viewY: 0,
-  settings: { ...presets.vibrant },
+  settings: { ...neutralSettings },
   renderToken: 0,
 };
 
@@ -231,6 +245,7 @@ const toolPanel = document.getElementById("toolPanel");
 const toolRailShell = document.getElementById("toolRailShell");
 const toolRail = document.getElementById("toolRail");
 const presetSelect = document.getElementById("presetSelect");
+const applyPreset = document.getElementById("applyPreset");
 const savePreset = document.getElementById("savePreset");
 const autoSummary = document.getElementById("autoSummary");
 const sliderStacks = {
@@ -266,13 +281,9 @@ fileInput.addEventListener("change", async (event) => {
 });
 
 presetSelect.addEventListener("change", () => {
-  const preset = getPresetSettings(presetSelect.value);
-  if (!preset) return;
-  state.settings = { ...preset };
-  applySettingsToControls();
-  schedulePreview();
   saveSessionSoon();
 });
+applyPreset.addEventListener("click", applySelectedPreset);
 savePreset.addEventListener("click", saveCurrentPreset);
 
 document.querySelectorAll(".segment").forEach((button) => {
@@ -373,7 +384,7 @@ function applySettingsToControls() {
   }
 }
 
-function renderPresetOptions(selectedValue = presetSelect.value || "vibrant") {
+function renderPresetOptions(selectedValue = presetSelect.value || "custom") {
   presetSelect.innerHTML = "";
 
   for (const key of presetOrder) {
@@ -400,10 +411,20 @@ function renderPresetOptions(selectedValue = presetSelect.value || "vibrant") {
 }
 
 function getPresetSettings(value) {
+  if (value === "custom") return neutralSettings;
   if (presets[value]) return presets[value];
   if (!value.startsWith("saved:")) return null;
   const id = value.slice("saved:".length);
   return customPresets.find((preset) => preset.id === id)?.settings || null;
+}
+
+function applySelectedPreset() {
+  const preset = getPresetSettings(presetSelect.value);
+  if (!preset) return;
+  state.settings = { ...neutralSettings, ...preset };
+  applySettingsToControls();
+  schedulePreview();
+  saveSessionSoon();
 }
 
 function saveCurrentPreset() {
@@ -434,7 +455,7 @@ function copyCurrentSettings() {
 
 function getSuggestedPresetName() {
   const selected = presetSelect.options[presetSelect.selectedIndex]?.textContent?.trim();
-  if (selected && selected !== "Custom") return `${selected} copy`;
+  if (selected && selected !== "No preset") return `${selected} copy`;
   return "My preset";
 }
 
@@ -481,6 +502,7 @@ async function loadFile(file) {
   setStatus("Loading image...");
   try {
     const dataUrl = await fileToDataUrl(file);
+    resetAdjustmentsForNewImage();
     await loadImageDataUrl(dataUrl, file.name.replace(/\.[^.]+$/, "") || "image");
     await saveSession();
     setStatus("Ready");
@@ -488,6 +510,12 @@ async function loadFile(file) {
     console.error(error);
     setStatus("Could not load that image.");
   }
+}
+
+function resetAdjustmentsForNewImage() {
+  state.settings = { ...neutralSettings };
+  presetSelect.value = "custom";
+  applySettingsToControls();
 }
 
 async function loadImageDataUrl(dataUrl, sourceName) {
@@ -1194,7 +1222,7 @@ async function restoreSession() {
     if (!session?.sourceDataUrl) return;
 
     setStatus("Restoring image...");
-    state.settings = { ...presets.vibrant, ...session.settings };
+    state.settings = { ...neutralSettings, ...session.settings };
     renderPresetOptions(session.preset || "custom");
     exportSize.value = session.exportSize || "full";
     setPreviewMode(session.previewMode || "hdr");

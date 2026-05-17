@@ -314,11 +314,12 @@ select {
 .preset-picker {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
+  grid-template-columns: minmax(0, 1fr) 40px 40px;
   gap: 7px;
   align-items: center;
 }
 
+.preset-apply,
 .preset-save {
   min-width: 40px;
   min-height: 38px;
@@ -673,10 +674,11 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .preset-picker {
-    grid-template-columns: minmax(0, 1fr) 36px;
+    grid-template-columns: minmax(0, 1fr) 36px 36px;
     gap: 6px;
   }
 
+  .preset-apply,
   .preset-save {
     min-width: 36px;
     min-height: 34px;
