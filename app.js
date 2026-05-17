@@ -598,22 +598,22 @@ function processPixels(data, settings, mode) {
     const ll = luma(lr, lg, lb);
     let mask = smoothstep(threshold, threshold + softness, ll);
     mask = Math.pow(clamp01(mask), power);
+    const gainResponse = Math.pow(mask, 1 / gamma);
 
-    const boost = 1 + (headroom - 1) * mask;
+    const boost = 1 + (headroom - 1) * gainResponse;
     let hr = lr * boost;
     let hg = lg * boost;
     let hb = lb * boost;
     const hl = luma(hr, hg, hb);
-    const sat = 1 + (hdrSat - 1) * mask;
+    const sat = 1 + (hdrSat - 1) * gainResponse;
     hr = Math.max(0, hl + (hr - hl) * sat);
     hg = Math.max(0, hl + (hg - hl) * sat);
     hb = Math.max(0, hl + (hb - hl) * sat);
 
     if (mode === "gain") {
-      const encoded = Math.pow(mask, 1 / gamma);
-      data[i] = Math.round(encoded * 255);
-      data[i + 1] = Math.round(encoded * 255);
-      data[i + 2] = Math.round(encoded * 255);
+      data[i] = Math.round(gainResponse * 255);
+      data[i + 1] = Math.round(gainResponse * 255);
+      data[i + 2] = Math.round(gainResponse * 255);
       continue;
     }
 
