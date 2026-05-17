@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517n";
+const STATIC_ASSET_VERSION = "20260517o";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -1119,14 +1119,17 @@ function clearHdrPreview() {
   hdrPreviewImage.style.display = "none";
 }
 
-function isNeutralSettings(settings = state.settings) {
-  return Object.entries(neutralSettings).every(
-    ([key, value]) => Math.abs((settings[key] ?? value) - value) <= NEUTRAL_SETTING_EPSILON,
+function hasHdrAdjustment(settings = state.settings) {
+  return (
+    Math.abs((settings.hdrHeadroom ?? neutralSettings.hdrHeadroom) - neutralSettings.hdrHeadroom) >
+      NEUTRAL_SETTING_EPSILON ||
+    Math.abs((settings.hdrSaturation ?? neutralSettings.hdrSaturation) - neutralSettings.hdrSaturation) >
+      NEUTRAL_SETTING_EPSILON
   );
 }
 
 function isTrueHdrPreviewActive() {
-  return state.previewMode === "hdr" && state.ultraHdrAvailable && !isNeutralSettings();
+  return state.previewMode === "hdr" && state.ultraHdrAvailable && hasHdrAdjustment();
 }
 
 function schedulePreview() {
@@ -1163,7 +1166,7 @@ function renderPreview() {
   }
 
   const imageData = previewCtx.getImageData(0, 0, source.width, source.height);
-  const renderMode = state.previewMode === "hdr" && isNeutralSettings() ? "sdr" : state.previewMode;
+  const renderMode = state.previewMode === "hdr" && !hasHdrAdjustment() ? "sdr" : state.previewMode;
   processPixels(imageData.data, state.settings, renderMode);
   previewCtx.putImageData(imageData, 0, 0);
 }
@@ -1272,7 +1275,7 @@ function selectedExportMaxSide() {
 }
 
 function makeUltraHdrOptions(options = {}) {
-  const targetHdrCapacity = Math.log2(Math.max(1, state.settings.hdrHeadroom));
+  const targetHdrCapacity = getTargetHdrCapacity();
   return {
     baseQuality: 95,
     gainMapQuality: 95,
@@ -1283,6 +1286,16 @@ function makeUltraHdrOptions(options = {}) {
     realtime: options.realtime ?? false,
     multiChannelGainMap: options.multiChannelGainMap ?? true,
   };
+}
+
+function getTargetHdrCapacity(settings = state.settings) {
+  const headroomStops = Math.log2(Math.max(1, settings.hdrHeadroom ?? neutralSettings.hdrHeadroom));
+  const hdrColor = settings.hdrSaturation ?? neutralSettings.hdrSaturation;
+  const colorStops =
+    Math.abs(hdrColor - neutralSettings.hdrSaturation) > NEUTRAL_SETTING_EPSILON
+      ? Math.max(0.75, Math.log2(Math.max(1, hdrColor)))
+      : 0;
+  return clamp(Math.max(headroomStops, colorStops), 0, 6);
 }
 
 async function encodeUltraHdrBlob(input, options = {}) {
