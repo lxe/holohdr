@@ -19,11 +19,11 @@ const sliders = [
 ];
 
 const toolTitles = {
+  menu: "Menu",
   look: "Look",
   tone: "Tone",
   color: "Color",
   hdr: "HDR",
-  export: "Export",
 };
 
 const presets = {
@@ -115,6 +115,8 @@ const exportSize = document.getElementById("exportSize");
 const exportUltra = document.getElementById("exportUltra");
 const exportJpeg = document.getElementById("exportJpeg");
 const exportGain = document.getElementById("exportGain");
+const menuOpen = document.getElementById("menuOpen");
+const menuClear = document.getElementById("menuClear");
 const previewCtx = previewCanvas.getContext("2d", { willReadFrequently: true });
 
 buildControls();
@@ -125,6 +127,7 @@ fileInput.addEventListener("change", async (event) => {
   const [file] = event.target.files || [];
   if (!file) return;
   await loadFile(file);
+  fileInput.value = "";
 });
 
 presetSelect.addEventListener("change", () => {
@@ -148,6 +151,9 @@ exportJpeg.addEventListener("click", () => exportProcessed("jpeg"));
 exportGain.addEventListener("click", () => exportProcessed("gain"));
 exportUltra.addEventListener("click", () => exportUltraHdr());
 exportSize.addEventListener("change", saveSessionSoon);
+emptyState.addEventListener("click", openImagePicker);
+menuOpen.addEventListener("click", openImagePicker);
+menuClear.addEventListener("click", clearImage);
 panelClose.addEventListener("click", () => setControlsOpen(false));
 document.querySelectorAll(".tool-button").forEach((button) => {
   button.addEventListener("click", () => {
@@ -227,9 +233,7 @@ async function loadImageDataUrl(dataUrl, sourceName) {
   imageMeta.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
   emptyState.style.display = "none";
   previewCanvas.style.display = "block";
-  exportUltra.disabled = false;
-  exportJpeg.disabled = false;
-  exportGain.disabled = false;
+  setImageActionsEnabled(true);
   setControlsOpen(false);
   schedulePreview();
 }
@@ -258,6 +262,37 @@ function setActiveTool(tool) {
   document.querySelectorAll(".tool-section").forEach((section) => {
     section.classList.toggle("active", section.dataset.section === tool);
   });
+}
+
+function openImagePicker() {
+  fileInput.click();
+}
+
+async function clearImage() {
+  window.clearTimeout(saveTimer);
+  state.sourceImage = null;
+  state.sourceDataUrl = null;
+  state.sourceName = "image";
+  state.previewSource = null;
+  state.peekingOriginal = false;
+  imageMeta.textContent = "No image loaded";
+  previewCanvas.style.display = "none";
+  emptyState.style.display = "grid";
+  setImageActionsEnabled(false);
+  setControlsOpen(false);
+  setStatus("Ready");
+  try {
+    await idbDelete(SESSION_KEY);
+  } catch (error) {
+    console.warn("Could not clear saved session", error);
+  }
+}
+
+function setImageActionsEnabled(enabled) {
+  exportUltra.disabled = !enabled;
+  exportJpeg.disabled = !enabled;
+  exportGain.disabled = !enabled;
+  menuClear.disabled = !enabled;
 }
 
 function setPreviewMode(mode) {
@@ -579,6 +614,21 @@ async function idbSet(key, value) {
     await new Promise((resolve, reject) => {
       const tx = db.transaction(SESSION_STORE, "readwrite");
       tx.objectStore(SESSION_STORE).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function idbDelete(key) {
+  const db = await openSessionDb();
+  try {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(SESSION_STORE, "readwrite");
+      tx.objectStore(SESSION_STORE).delete(key);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error);
