@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517u";
+const STATIC_ASSET_VERSION = "20260517v";
 const HDR_COLOR_BASE_STRENGTH = 0.18;
 const HDR_COLOR_MAX_DELTA = 0.28;
 const HDR_COLOR_RESPONSE_FLOOR = 0.06;
@@ -378,7 +378,7 @@ for (const target of [previewCanvas, hdrPreviewImage]) {
       gesture.suppressClick = false;
       return;
     }
-    if (window.matchMedia("(max-width: 860px)").matches) setControlsOpen(false);
+    setControlsOpen(false);
   });
   target.addEventListener("pointerdown", beginPreviewGesture);
   target.addEventListener("pointermove", updatePreviewGesture);
@@ -619,8 +619,7 @@ function decodeImage(src) {
 function setControlsOpen(open) {
   state.controlsOpen = open;
   controlsPanel.classList.toggle("open", open);
-  const mobile = window.matchMedia("(max-width: 860px)").matches;
-  toolPanel.setAttribute("aria-hidden", String(!open && mobile));
+  toolPanel.setAttribute("aria-hidden", String(!open));
   if (!isTrueHdrPreviewActive()) showCanvasPreview();
 }
 
