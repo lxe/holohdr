@@ -301,13 +301,24 @@ function buildControls() {
     card.className = "slider-card";
     card.innerHTML = `
       <div class="slider-head">
-        <label for="${key}">${label}</label>
+        <div class="slider-label-row">
+          <label for="${key}">${label}</label>
+          <button class="help-button" type="button" aria-expanded="false" aria-label="${label} help">?</button>
+        </div>
         <span class="slider-value" id="${key}Value"></span>
       </div>
       <input id="${key}" type="range" min="${min}" max="${max}" step="${step}" />
-      <p class="slider-description">${description}</p>
+      <p class="slider-description" hidden>${description}</p>
     `;
     sliderStacks[group].appendChild(card);
+
+    const help = card.querySelector(".help-button");
+    const descriptionEl = card.querySelector(".slider-description");
+    help.addEventListener("click", () => {
+      const expanded = help.getAttribute("aria-expanded") === "true";
+      help.setAttribute("aria-expanded", String(!expanded));
+      descriptionEl.hidden = expanded;
+    });
 
     const input = document.getElementById(key);
     input.addEventListener("input", () => {

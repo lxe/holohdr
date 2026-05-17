@@ -313,6 +313,30 @@ select {
   margin-bottom: 2px;
 }
 
+.slider-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.help-button {
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.help-button[aria-expanded="true"] {
+  background: var(--control-hi);
+  color: var(--text);
+}
+
 .slider-value {
   min-width: 54px;
   color: var(--warm);
@@ -327,6 +351,10 @@ select {
   color: var(--dim);
   font-size: 11px;
   line-height: 1.3;
+}
+
+.slider-description[hidden] {
+  display: none;
 }
 
 input[type="range"] {
