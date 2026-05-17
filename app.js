@@ -118,7 +118,6 @@ const imageMeta = document.getElementById("imageMeta");
 const controlsPanel = document.getElementById("controlsPanel");
 const toolPanel = document.getElementById("toolPanel");
 const toolTitle = document.getElementById("toolTitle");
-const panelClose = document.getElementById("panelClose");
 const presetSelect = document.getElementById("presetSelect");
 const sliderStacks = {
   tone: document.getElementById("toneSliderStack"),
@@ -169,12 +168,13 @@ exportSize.addEventListener("change", saveSessionSoon);
 emptyState.addEventListener("click", openImagePicker);
 menuOpen.addEventListener("click", openImagePicker);
 menuClear.addEventListener("click", clearImage);
-panelClose.addEventListener("click", () => setControlsOpen(false));
 document.querySelectorAll(".tool-button").forEach((button) => {
   button.addEventListener("click", () => {
+    const wasOpen = controlsPanel.classList.contains("open");
+    const wasActive = button.classList.contains("active");
     setActiveTool(button.dataset.tool);
     button.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-    setControlsOpen(true);
+    setControlsOpen(!(wasOpen && wasActive));
   });
 });
 previewCanvas.addEventListener("click", () => {

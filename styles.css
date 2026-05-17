@@ -175,8 +175,7 @@ select {
   background: rgba(255, 255, 255, 0.035);
 }
 
-.tool-button,
-.icon-button {
+.tool-button {
   min-height: 42px;
   min-width: 42px;
   padding: 0;
@@ -212,22 +211,15 @@ select {
 }
 
 .tool-header {
-  min-height: 36px;
+  min-height: 28px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   margin-bottom: 8px;
 }
 
 .tool-header strong {
   font-size: 14px;
   letter-spacing: 0;
-}
-
-.icon-button {
-  display: none;
-  font-size: 20px;
 }
 
 .tool-section {
@@ -474,13 +466,6 @@ input[type="range"]::-moz-range-thumb {
 
   .tool-header strong {
     font-size: 13px;
-  }
-
-  .icon-button {
-    display: inline-flex;
-    min-height: 30px;
-    min-width: 30px;
-    color: var(--muted);
   }
 
   .tool-section.active {
