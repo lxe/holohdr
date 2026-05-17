@@ -139,6 +139,9 @@ select {
   display: none;
   border: 1px solid #383838;
   background: #0e0e0e;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .empty-state {

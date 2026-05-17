@@ -79,6 +79,7 @@ const state = {
   sourceName: "image",
   previewSource: null,
   previewMode: "hdr",
+  peekingOriginal: false,
   settings: { ...presets.vibrant },
   renderToken: 0,
 };
@@ -132,6 +133,11 @@ sheetToggle.addEventListener("click", () => setControlsOpen(!controlsPanel.class
 previewCanvas.addEventListener("click", () => {
   if (window.matchMedia("(max-width: 860px)").matches) setControlsOpen(false);
 });
+previewCanvas.addEventListener("pointerdown", beginOriginalPeek);
+previewCanvas.addEventListener("pointerup", endOriginalPeek);
+previewCanvas.addEventListener("pointercancel", endOriginalPeek);
+previewCanvas.addEventListener("pointerleave", endOriginalPeek);
+previewCanvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
 function buildControls() {
   sliderStack.innerHTML = "";
@@ -182,6 +188,7 @@ async function loadFile(file) {
     state.sourceDataUrl = await fileToDataUrl(file);
     state.sourceName = file.name.replace(/\.[^.]+$/, "") || "image";
     state.previewSource = makeSourceCanvas(img, PREVIEW_MAX_SIDE);
+    state.peekingOriginal = false;
 
     imageMeta.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
     emptyState.style.display = "none";
@@ -205,6 +212,20 @@ function setControlsOpen(open) {
   sheetToggle.setAttribute("aria-expanded", String(open));
 }
 
+function beginOriginalPeek(event) {
+  if (!state.previewSource || event.button > 0) return;
+  state.peekingOriginal = true;
+  previewCanvas.setPointerCapture?.(event.pointerId);
+  renderPreview();
+}
+
+function endOriginalPeek(event) {
+  if (!state.peekingOriginal) return;
+  state.peekingOriginal = false;
+  previewCanvas.releasePointerCapture?.(event.pointerId);
+  schedulePreview();
+}
+
 function schedulePreview() {
   if (!state.previewSource) return;
   const token = ++state.renderToken;
@@ -219,6 +240,8 @@ function renderPreview() {
   previewCanvas.width = source.width;
   previewCanvas.height = source.height;
   previewCtx.drawImage(source, 0, 0);
+  if (state.peekingOriginal) return;
+
   const imageData = previewCtx.getImageData(0, 0, source.width, source.height);
   processPixels(imageData.data, state.settings, state.previewMode);
   previewCtx.putImageData(imageData, 0, 0);
