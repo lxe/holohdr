@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517i";
+const STATIC_ASSET_VERSION = "20260517j";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -1102,17 +1102,23 @@ function schedulePreview() {
   if (!state.previewSource) return;
   window.clearTimeout(state.hdrPreviewTimer);
   const token = ++state.renderToken;
-  requestAnimationFrame(() => {
-    if (token !== state.renderToken) return;
-    renderPreview();
-  });
   if (isTrueHdrPreviewActive() && !state.peekingOriginal) {
+    if (state.hdrPreviewUrl && state.hdrPreviewKey === makeHdrPreviewKey()) {
+      showHdrPreview();
+      return;
+    }
     state.hdrPreviewTimer = window.setTimeout(() => {
       renderTrueHdrPreview(token).catch((error) => {
         console.warn("True HDR preview failed", error);
       });
     }, HDR_PREVIEW_DEBOUNCE_MS);
+    return;
   }
+
+  requestAnimationFrame(() => {
+    if (token !== state.renderToken) return;
+    renderPreview();
+  });
 }
 
 function renderPreview() {
