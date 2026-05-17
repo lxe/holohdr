@@ -1,50 +1,31 @@
 #!/usr/bin/env python3
-import argparse
-import base64
-import importlib.util
-import json
-import os
-import sys
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from io import BytesIO
-from pathlib import Path
-from tempfile import NamedTemporaryFile
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+"""Small development server for HoloHDR.
 
-import numpy as np
-from PIL import Image, ImageOps
+The production app is static. This server exists only to make local browser
+testing less cache-prone while iterating on HTML, CSS, and JavaScript.
+"""
+
+import argparse
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 
 ROOT = Path(__file__).resolve().parent
-COMFY_ROOT = ROOT.parent
-LXE_EXPORT_PATH = COMFY_ROOT / "custom_nodes" / "ComfyUI_LXENodes" / "ultra_hdr_export.py"
-sys.path.insert(0, str(COMFY_ROOT))
-
-
-def load_lxe_export_module():
-    spec = importlib.util.spec_from_file_location("lxe_ultra_hdr_export", LXE_EXPORT_PATH)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load {LXE_EXPORT_PATH}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-lxe = load_lxe_export_module()
-
 
 CACHE_BUST_FILES = (
     ROOT / "index.html",
     ROOT / "styles.css",
     ROOT / "app.js",
     ROOT / "manifest.webmanifest",
-    ROOT / "app_server.py",
+    ROOT / "ultrahdr-worker.js",
 )
 
 ASSET_PATHS = {
     "/app.js",
     "/styles.css",
     "/manifest.webmanifest",
+    "/ultrahdr-worker.js",
 }
 
 
@@ -57,10 +38,6 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         parsed = urlparse(self.path)
-        if parsed.path == "/api/capabilities":
-            self._serve_capabilities(head_only=False)
-            return
-
         if parsed.path in ("", "/", "/index.html"):
             self._serve_index(head_only=False)
             return
@@ -72,54 +49,11 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         parsed = urlparse(self.path)
-        if parsed.path == "/api/capabilities":
-            self._serve_capabilities(head_only=True)
-            return
-
         if parsed.path in ("", "/", "/index.html"):
             self._serve_index(head_only=True)
             return
 
         super().do_HEAD()
-
-    def do_POST(self):
-        if urlparse(self.path).path != "/api/export-ultrahdr":
-            self.send_error(404)
-            return
-
-        try:
-            payload = self._read_json()
-            image = decode_data_url(payload["image"])
-            settings = payload.get("settings", {})
-            max_side = parse_export_size(payload.get("exportSize", "full"))
-            filename = safe_filename(payload.get("filename") or "image")
-
-            if max_side is not None:
-                image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
-
-            result = render_ultra_hdr(image, settings)
-            self.send_response(200)
-            self.send_header("Content-Type", "image/jpeg")
-            self.send_header("Content-Length", str(len(result)))
-            self.send_header(
-                "Content-Disposition",
-                f'attachment; filename="{filename}-ultrahdr.jpg"',
-            )
-            self.end_headers()
-            self.wfile.write(result)
-        except Exception as exc:
-            message = json.dumps({"error": str(exc)}).encode("utf-8")
-            self.send_response(500)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(message)))
-            self.end_headers()
-            self.wfile.write(message)
-
-    def _read_json(self):
-        length = int(self.headers.get("Content-Length", "0"))
-        if length <= 0:
-            raise ValueError("Empty request body")
-        return json.loads(self.rfile.read(length).decode("utf-8"))
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -159,15 +93,6 @@ class Handler(SimpleHTTPRequestHandler):
         if not head_only:
             self.wfile.write(data)
 
-    def _serve_capabilities(self, head_only):
-        data = json.dumps({"ultraHdr": True}).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        if not head_only:
-            self.wfile.write(data)
-
 
 def cache_token():
     mtimes = []
@@ -179,119 +104,14 @@ def cache_token():
     return str(max(mtimes) if mtimes else 0)
 
 
-def render_ultra_hdr(image, settings):
-    from hdrconv.convert.gainmap import hdr_to_gainmap
-    from hdrconv.core import HDRImage
-    from hdrconv.io.iso21496 import write_21496
-    from hdrconv.io.ultrahdr import write_ultrahdr
-
-    image = ImageOps.exif_transpose(image).convert("RGB")
-    encoded = np.asarray(image, dtype=np.float32) / 255.0
-    icc = lxe._load_icc_profile("sRGB", "")
-
-    sdr_encoded = adjust_sdr_for_app(
-        encoded,
-        exposure_ev=float(settings.get("sdrExposure", 0.0)),
-        contrast=float(settings.get("sdrContrast", 1.0)),
-        shadows=float(settings.get("sdrShadows", 0.0)),
-        highlights=float(settings.get("sdrHighlights", 0.0)),
-        saturation=float(settings.get("sdrSaturation", 1.0)),
-    )
-    baseline_linear = lxe._srgb_to_linear(sdr_encoded)
-    hdr_linear, _mask = lxe._make_hdr_linear(
-        baseline_linear,
-        hdr_headroom=float(settings.get("hdrHeadroom", 3.0)),
-        threshold=float(settings.get("highlightThreshold", 0.55)),
-        softness=float(settings.get("highlightSoftness", 0.35)),
-        power=float(settings.get("highlightPower", 1.25)),
-        saturation=float(settings.get("hdrSaturation", 1.08)),
-    )
-
-    gainmap_data = hdr_to_gainmap(
-        HDRImage(
-            data=hdr_linear.astype(np.float32),
-            transfer_function="linear",
-            icc_profile=icc,
-        ),
-        baseline=baseline_linear.astype(np.float32),
-        icc_profile=icc,
-        gamma=float(settings.get("gainmapGamma", 1.0)),
-    )
-    gainmap_data["baseline_icc"] = icc
-    gainmap_data["gainmap_icc"] = icc
-    gainmap_data = lxe._set_gainmap_channels(gainmap_data, "rgb")
-    gainmap_data["gainmap"] = lxe._resize_gainmap(gainmap_data["gainmap"], "full")
-
-    with NamedTemporaryFile(suffix=".jpg", delete=False) as temp:
-        temp_path = temp.name
-    try:
-        saved_paths = lxe._write_gainmap_files(
-            gainmap_data,
-            temp_path,
-            "ultrahdr_plus_iso",
-            write_ultrahdr=write_ultrahdr,
-            write_21496=write_21496,
-            baseline_quality=97,
-            gainmap_quality=95,
-        )
-        with open(saved_paths[0], "rb") as file:
-            return file.read()
-    finally:
-        for path in {temp_path, *locals().get("saved_paths", [])}:
-            try:
-                os.unlink(path)
-            except FileNotFoundError:
-                pass
-
-
-def adjust_sdr_for_app(image, exposure_ev, contrast, shadows, highlights, saturation):
-    out = image * (2.0 ** float(exposure_ev))
-    out = (out - 0.5) * float(contrast) + 0.5
-    out = np.clip(out, 0.0, 1.0).astype(np.float32)
-
-    tonal_luma = lxe._luma(out)
-    shadow_mask = 1.0 - lxe._smoothstep(0.0, 0.55, tonal_luma)
-    highlight_mask = lxe._smoothstep(0.45, 1.0, tonal_luma)
-    out = apply_tonal_range(out, float(shadows), shadow_mask[..., None])
-    out = apply_tonal_range(out, float(highlights), highlight_mask[..., None])
-    out = lxe._adjust_saturation(out, float(saturation), amount=1.0)
-    return np.clip(out, 0.0, 1.0).astype(np.float32)
-
-
-def apply_tonal_range(image, amount, mask):
-    strength = float(amount) * mask * 0.75
-    lifted = image + (1.0 - image) * np.maximum(strength, 0.0)
-    deepened = image + image * np.minimum(strength, 0.0)
-    return np.where(strength >= 0.0, lifted, deepened)
-
-
-def decode_data_url(value):
-    if "," in value:
-        value = value.split(",", 1)[1]
-    return Image.open(BytesIO(base64.b64decode(value)))
-
-
-def parse_export_size(value):
-    if value in ("full", None):
-        return None
-    if value == "preview":
-        return 1800
-    return int(value)
-
-
-def safe_filename(value):
-    cleaned = "".join(ch for ch in value if ch.isalnum() or ch in ("-", "_", "."))
-    return cleaned[:80] or "image"
-
-
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=5177)
+    parser = argparse.ArgumentParser(description="Serve HoloHDR locally for development.")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
 
     server = ThreadingHTTPServer((args.host, args.port), Handler)
-    print(f"Serving HDR Gain Map Tuner on http://{args.host}:{args.port}/")
+    print(f"Serving HoloHDR on http://{args.host}:{args.port}/")
     server.serve_forever()
 
 
