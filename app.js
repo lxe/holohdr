@@ -7,16 +7,24 @@ const SESSION_STORE = "session";
 const SESSION_KEY = "last";
 
 const sliders = [
-  ["sdrExposure", "SDR exposure", -1, 1.5, 0.01],
-  ["sdrContrast", "SDR contrast", 0.5, 1.5, 0.01],
-  ["sdrSaturation", "SDR saturation", 0, 2.5, 0.01],
-  ["hdrHeadroom", "HDR headroom", 1, 12, 0.1],
-  ["highlightThreshold", "Highlight threshold", 0, 1, 0.01],
-  ["highlightSoftness", "Highlight softness", 0.01, 1, 0.01],
-  ["highlightPower", "Highlight power", 0.1, 5, 0.01],
-  ["hdrSaturation", "HDR saturation", 0, 2.5, 0.01],
-  ["gainmapGamma", "Gain-map gamma", 0.1, 4, 0.01],
+  { key: "sdrExposure", label: "Exposure", min: -1, max: 1.5, step: 0.01, group: "tone" },
+  { key: "sdrContrast", label: "Contrast", min: 0.5, max: 1.5, step: 0.01, group: "tone" },
+  { key: "sdrSaturation", label: "SDR color", min: 0, max: 2.5, step: 0.01, group: "color" },
+  { key: "hdrSaturation", label: "HDR color", min: 0, max: 2.5, step: 0.01, group: "color" },
+  { key: "hdrHeadroom", label: "Headroom", min: 1, max: 12, step: 0.1, group: "hdr" },
+  { key: "highlightThreshold", label: "Threshold", min: 0, max: 1, step: 0.01, group: "hdr" },
+  { key: "highlightSoftness", label: "Softness", min: 0.01, max: 1, step: 0.01, group: "hdr" },
+  { key: "highlightPower", label: "Power", min: 0.1, max: 5, step: 0.01, group: "hdr" },
+  { key: "gainmapGamma", label: "Gamma", min: 0.1, max: 4, step: 0.01, group: "hdr" },
 ];
+
+const toolTitles = {
+  look: "Look",
+  tone: "Tone",
+  color: "Color",
+  hdr: "HDR",
+  export: "Export",
+};
 
 const presets = {
   custom: null,
@@ -93,9 +101,15 @@ const previewCanvas = document.getElementById("previewCanvas");
 const emptyState = document.getElementById("emptyState");
 const imageMeta = document.getElementById("imageMeta");
 const controlsPanel = document.getElementById("controlsPanel");
-const sheetToggle = document.getElementById("sheetToggle");
+const toolPanel = document.getElementById("toolPanel");
+const toolTitle = document.getElementById("toolTitle");
+const panelClose = document.getElementById("panelClose");
 const presetSelect = document.getElementById("presetSelect");
-const sliderStack = document.getElementById("sliderStack");
+const sliderStacks = {
+  tone: document.getElementById("toneSliderStack"),
+  color: document.getElementById("colorSliderStack"),
+  hdr: document.getElementById("hdrSliderStack"),
+};
 const statusLine = document.getElementById("statusLine");
 const exportSize = document.getElementById("exportSize");
 const exportUltra = document.getElementById("exportUltra");
@@ -134,7 +148,13 @@ exportJpeg.addEventListener("click", () => exportProcessed("jpeg"));
 exportGain.addEventListener("click", () => exportProcessed("gain"));
 exportUltra.addEventListener("click", () => exportUltraHdr());
 exportSize.addEventListener("change", saveSessionSoon);
-sheetToggle.addEventListener("click", () => setControlsOpen(!controlsPanel.classList.contains("open")));
+panelClose.addEventListener("click", () => setControlsOpen(false));
+document.querySelectorAll(".tool-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    setActiveTool(button.dataset.tool);
+    setControlsOpen(true);
+  });
+});
 previewCanvas.addEventListener("click", () => {
   if (window.matchMedia("(max-width: 860px)").matches) setControlsOpen(false);
 });
@@ -145,8 +165,10 @@ previewCanvas.addEventListener("pointerleave", endOriginalPeek);
 previewCanvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
 function buildControls() {
-  sliderStack.innerHTML = "";
-  for (const [key, label, min, max, step] of sliders) {
+  Object.values(sliderStacks).forEach((stack) => {
+    stack.innerHTML = "";
+  });
+  for (const { key, label, min, max, step, group } of sliders) {
     const card = document.createElement("div");
     card.className = "slider-card";
     card.innerHTML = `
@@ -156,7 +178,7 @@ function buildControls() {
       </div>
       <input id="${key}" type="range" min="${min}" max="${max}" step="${step}" />
     `;
-    sliderStack.appendChild(card);
+    sliderStacks[group].appendChild(card);
 
     const input = document.getElementById(key);
     input.addEventListener("input", () => {
@@ -170,7 +192,7 @@ function buildControls() {
 }
 
 function applySettingsToControls() {
-  for (const [key] of sliders) {
+  for (const { key } of sliders) {
     const input = document.getElementById(key);
     input.value = state.settings[key];
     updateValueLabel(key);
@@ -224,7 +246,18 @@ function decodeImage(src) {
 
 function setControlsOpen(open) {
   controlsPanel.classList.toggle("open", open);
-  sheetToggle.setAttribute("aria-expanded", String(open));
+  const mobile = window.matchMedia("(max-width: 860px)").matches;
+  toolPanel.setAttribute("aria-hidden", String(!open && mobile));
+}
+
+function setActiveTool(tool) {
+  toolTitle.textContent = toolTitles[tool] || "Adjust";
+  document.querySelectorAll(".tool-button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.tool === tool);
+  });
+  document.querySelectorAll(".tool-section").forEach((section) => {
+    section.classList.toggle("active", section.dataset.section === tool);
+  });
 }
 
 function setPreviewMode(mode) {
