@@ -1,6 +1,7 @@
 const PREVIEW_MAX_SIDE = 1800;
 const EXPORT_MIME = "image/jpeg";
 const JPEG_QUALITY = 0.96;
+const ORIGINAL_PEEK_DELAY_MS = 10;
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -349,7 +350,7 @@ function beginPreviewGesture(event) {
       state.peekingOriginal = true;
       gesture.suppressClick = true;
       renderPreview();
-    }, 1000);
+    }, ORIGINAL_PEEK_DELAY_MS);
     return;
   }
 
