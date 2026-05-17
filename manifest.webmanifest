@@ -1,7 +1,7 @@
 {
   "name": "HoloHDR",
   "short_name": "HoloHDR",
-  "description": "A private, browser-only Ultra HDR image tuner for mobile photo experiments.",
+  "description": "Ultra HDR image tuner.",
   "id": "https://holohdr.com/",
   "start_url": "/",
   "scope": "/",
