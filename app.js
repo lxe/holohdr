@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517k";
+const STATIC_ASSET_VERSION = "20260517l";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -570,7 +570,12 @@ async function loadImageDataUrl(dataUrl, sourceName) {
 
   imageMeta.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
   emptyState.style.display = "none";
-  showCanvasPreview();
+  if (isTrueHdrPreviewActive()) {
+    previewCanvas.style.display = "none";
+    hdrPreviewImage.style.display = "none";
+  } else {
+    showCanvasPreview();
+  }
   setImageActionsEnabled(true);
   setControlsOpen(false);
   schedulePreview();
@@ -662,11 +667,13 @@ function checkExportCapabilities() {
 }
 
 function setPreviewMode(mode) {
+  if (mode !== "hdr" && mode !== "sdr") mode = "hdr";
   state.previewMode = mode;
   document.querySelectorAll(".segment").forEach((item) => {
     item.classList.toggle("active", item.dataset.mode === mode);
   });
-  if (!isTrueHdrPreviewActive()) showCanvasPreview();
+  if (isTrueHdrPreviewActive()) showHdrPreviewIfCurrent();
+  else showCanvasPreview();
 }
 
 function applyAutoTune(mode) {
@@ -1086,6 +1093,16 @@ function showHdrPreview() {
   applyImageTransform();
 }
 
+function showHdrPreviewIfCurrent() {
+  if (state.previewSource && state.hdrPreviewUrl && state.hdrPreviewKey === makeHdrPreviewKey()) {
+    showHdrPreview();
+    return;
+  }
+  previewCanvas.style.display = "none";
+  hdrPreviewImage.style.display = "none";
+  applyImageTransform();
+}
+
 function clearHdrPreview() {
   window.clearTimeout(state.hdrPreviewTimer);
   state.hdrPreviewTimer = 0;
@@ -1097,7 +1114,7 @@ function clearHdrPreview() {
 }
 
 function isTrueHdrPreviewActive() {
-  return state.controlsOpen && state.activeTool === "preview" && state.previewMode === "hdr" && state.ultraHdrAvailable;
+  return state.previewMode === "hdr" && state.ultraHdrAvailable;
 }
 
 function schedulePreview() {
@@ -1150,7 +1167,7 @@ async function renderTrueHdrPreview(token) {
   const [wasm, input] = await Promise.all([getUltraHdrWasm(), makeUltraHdrEncodeInput(PREVIEW_MAX_SIDE)]);
   if (token !== state.renderToken || !isTrueHdrPreviewActive() || state.peekingOriginal || !state.previewSource) return;
 
-  const blob = encodeUltraHdrBlob(wasm, input);
+  const blob = encodeUltraHdrBlob(wasm, input, { gainMapScale: 4 });
   const url = URL.createObjectURL(blob);
   await loadHdrPreviewUrl(url);
   if (token !== state.renderToken || !isTrueHdrPreviewActive() || state.peekingOriginal || !state.previewSource) {
@@ -1241,14 +1258,14 @@ function selectedExportMaxSide() {
   return Number(exportSize.value);
 }
 
-function encodeUltraHdrBlob(wasm, input) {
+function encodeUltraHdrBlob(wasm, input, options = {}) {
   const encoded = wasm.encodeUltraHdr(new Uint8Array(input.sdrBuffer), input.hdrBuffer, {
     baseQuality: 95,
     gainMapQuality: 95,
     targetHdrCapacity: clamp(Math.log2(Math.max(1, state.settings.hdrHeadroom)), 1, 6),
     includeIsoMetadata: true,
     includeUltrahdrV1: true,
-    gainMapScale: 1,
+    gainMapScale: options.gainMapScale ?? 1,
   });
   return new Blob([encoded], { type: "image/jpeg" });
 }

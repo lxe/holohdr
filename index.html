@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#171717" />
     <title>HoloHDR</title>
-    <link rel="manifest" href="./manifest.webmanifest?v=20260517k" />
-    <link rel="stylesheet" href="./styles.css?v=20260517k" />
+    <link rel="manifest" href="./manifest.webmanifest?v=20260517l" />
+    <link rel="stylesheet" href="./styles.css?v=20260517l" />
   </head>
   <body>
     <main class="app-shell">
@@ -25,6 +25,11 @@
         <aside id="controlsPanel" class="controls-panel" aria-label="Adjustment controls">
           <div id="toolPanel" class="tool-panel">
             <div class="tool-section menu-section" data-section="menu">
+              <div class="segmented preview-mode-toggle" role="group" aria-label="Preview mode">
+                <button class="segment active" type="button" data-mode="hdr">HDR</button>
+                <button class="segment" type="button" data-mode="sdr">SDR</button>
+              </div>
+
               <div class="file-actions">
                 <button id="menuOpen" class="menu-icon-action" type="button" aria-label="Open image">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -134,14 +139,6 @@
               </div>
             </div>
 
-            <div class="tool-section" data-section="preview">
-              <div class="segmented" role="group" aria-label="Preview mode">
-                <button class="segment active" type="button" data-mode="hdr">HDR</button>
-                <button class="segment" type="button" data-mode="sdr">SDR</button>
-                <button class="segment" type="button" data-mode="gain">Gain</button>
-              </div>
-            </div>
-
             <div id="toneSliderStack" class="tool-section slider-stack" data-section="tone"></div>
             <div id="shadowsSliderStack" class="tool-section slider-stack" data-section="shadows"></div>
             <div id="highlightsSliderStack" class="tool-section slider-stack" data-section="highlights"></div>
@@ -169,12 +166,6 @@
               <button class="tool-button active" type="button" data-tool="look" aria-label="Look">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 3v18M4 8h16M7 16h10" />
-                </svg>
-              </button>
-              <button class="tool-button" type="button" data-tool="preview" aria-label="Preview">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-                  <circle cx="12" cy="12" r="2.5" />
                 </svg>
               </button>
               <button class="tool-button" type="button" data-tool="tone" aria-label="Tone">
@@ -270,6 +261,6 @@
       </article>
     </section>
 
-    <script src="./app.js?v=20260517k" type="module"></script>
+    <script src="./app.js?v=20260517l" type="module"></script>
   </body>
 </html>

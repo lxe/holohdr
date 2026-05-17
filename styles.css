@@ -443,6 +443,10 @@ select {
   background: rgba(255, 255, 255, 0.055);
 }
 
+.preview-mode-toggle {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .segment {
   min-height: 32px;
   padding: 0 8px;
