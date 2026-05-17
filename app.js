@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517l";
+const STATIC_ASSET_VERSION = "20260517m";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -220,6 +220,10 @@ const autoModes = {
 
 let customPresets = loadCustomPresets();
 let ultraHdrWasmPromise = null;
+let ultraHdrWorker = null;
+let ultraHdrWorkerFailed = false;
+let ultraHdrWorkerSeq = 0;
+const ultraHdrWorkerJobs = new Map();
 
 const state = {
   sourceImage: null,
@@ -1164,10 +1168,10 @@ async function renderTrueHdrPreview(token) {
     return;
   }
 
-  const [wasm, input] = await Promise.all([getUltraHdrWasm(), makeUltraHdrEncodeInput(PREVIEW_MAX_SIDE)]);
+  const input = await makeUltraHdrEncodeInput(PREVIEW_MAX_SIDE);
   if (token !== state.renderToken || !isTrueHdrPreviewActive() || state.peekingOriginal || !state.previewSource) return;
 
-  const blob = encodeUltraHdrBlob(wasm, input, { gainMapScale: 4 });
+  const blob = await encodeUltraHdrBlob(input, { gainMapScale: 4, realtime: true });
   const url = URL.createObjectURL(blob);
   await loadHdrPreviewUrl(url);
   if (token !== state.renderToken || !isTrueHdrPreviewActive() || state.peekingOriginal || !state.previewSource) {
@@ -1228,10 +1232,10 @@ async function exportUltraHdr() {
     await nextFrame();
     if (token !== state.renderToken) return;
 
-    const [wasm, input] = await Promise.all([getUltraHdrWasm(), makeUltraHdrEncodeInput()]);
+    const input = await makeUltraHdrEncodeInput();
     if (token !== state.renderToken) return;
 
-    const blob = encodeUltraHdrBlob(wasm, input);
+    const blob = await encodeUltraHdrBlob(input);
     downloadBlob(blob, `${state.sourceName}-ultrahdr.jpg`);
     setStatus(`Exported Ultra HDR JPEG ${input.width} x ${input.height}`);
   } catch (error) {
@@ -1258,16 +1262,81 @@ function selectedExportMaxSide() {
   return Number(exportSize.value);
 }
 
-function encodeUltraHdrBlob(wasm, input, options = {}) {
-  const encoded = wasm.encodeUltraHdr(new Uint8Array(input.sdrBuffer), input.hdrBuffer, {
+function makeUltraHdrOptions(options = {}) {
+  return {
     baseQuality: 95,
     gainMapQuality: 95,
     targetHdrCapacity: clamp(Math.log2(Math.max(1, state.settings.hdrHeadroom)), 1, 6),
     includeIsoMetadata: true,
     includeUltrahdrV1: true,
     gainMapScale: options.gainMapScale ?? 1,
+    realtime: options.realtime ?? false,
+    multiChannelGainMap: options.multiChannelGainMap ?? true,
+  };
+}
+
+async function encodeUltraHdrBlob(input, options = {}) {
+  const outputBuffer = await encodeUltraHdrBuffer(input, makeUltraHdrOptions(options));
+  return new Blob([outputBuffer], { type: "image/jpeg" });
+}
+
+async function encodeUltraHdrBuffer(input, options) {
+  if (window.Worker && !ultraHdrWorkerFailed) {
+    try {
+      return encodeUltraHdrInWorker(input, options);
+    } catch (error) {
+      ultraHdrWorkerFailed = true;
+      console.warn("Ultra HDR worker unavailable", error);
+    }
+  }
+  return encodeUltraHdrOnMain(input, options);
+}
+
+function encodeUltraHdrInWorker(input, options) {
+  const worker = getUltraHdrWorker();
+  const id = ++ultraHdrWorkerSeq;
+  return new Promise((resolve, reject) => {
+    ultraHdrWorkerJobs.set(id, { resolve, reject });
+    worker.postMessage(
+      {
+        id,
+        sdrBuffer: input.sdrBuffer,
+        hdrBuffer: input.hdrBuffer.buffer,
+        options,
+      },
+      [input.sdrBuffer, input.hdrBuffer.buffer],
+    );
   });
-  return new Blob([encoded], { type: "image/jpeg" });
+}
+
+function getUltraHdrWorker() {
+  if (ultraHdrWorker) return ultraHdrWorker;
+
+  ultraHdrWorker = new Worker(`./ultrahdr-worker.js?v=${STATIC_ASSET_VERSION}`, { type: "module" });
+  ultraHdrWorker.addEventListener("message", (event) => {
+    const { id, outputBuffer, error } = event.data || {};
+    const job = ultraHdrWorkerJobs.get(id);
+    if (!job) return;
+    ultraHdrWorkerJobs.delete(id);
+    if (error) job.reject(new Error(error));
+    else job.resolve(outputBuffer);
+  });
+  ultraHdrWorker.addEventListener("error", (error) => {
+    ultraHdrWorkerFailed = true;
+    for (const job of ultraHdrWorkerJobs.values()) {
+      job.reject(error instanceof Error ? error : new Error("Ultra HDR worker failed."));
+    }
+    ultraHdrWorkerJobs.clear();
+    ultraHdrWorker?.terminate();
+    ultraHdrWorker = null;
+  });
+  return ultraHdrWorker;
+}
+
+async function encodeUltraHdrOnMain(input, options) {
+  const wasm = await getUltraHdrWasm();
+  const encoded = wasm.encodeUltraHdr(new Uint8Array(input.sdrBuffer), input.hdrBuffer, options);
+  return encoded.slice().buffer;
 }
 
 async function makeUltraHdrEncodeInput(maxSide = selectedExportMaxSide()) {
