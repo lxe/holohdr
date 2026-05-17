@@ -349,6 +349,31 @@ select {
   line-height: 1.48;
 }
 
+.info-content a {
+  color: var(--warm);
+  text-decoration: none;
+}
+
+.info-content a:focus-visible,
+.info-content a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.info-links {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.info-links li {
+  color: rgba(246, 242, 234, 0.72);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
 .wand-section.active {
   gap: 8px;
 }
