@@ -6,8 +6,10 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517q";
-const HDR_COLOR_BASE_STRENGTH = 0.45;
+const STATIC_ASSET_VERSION = "20260517r";
+const HDR_COLOR_BASE_STRENGTH = 0.18;
+const HDR_COLOR_MAX_DELTA = 0.28;
+const HDR_COLOR_RESPONSE_FLOOR = 0.06;
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -67,7 +69,7 @@ const sliders = [
     max: 2.5,
     step: 0.01,
     group: "color",
-    description: "Adds color mostly in areas receiving HDR lift. HoloHDR also nudges the Ultra HDR fallback image so the change survives apps that flatten gain-map color.",
+    description: "Adds a subtle color bias mostly in areas receiving HDR lift. This is intentionally compressed so small slider moves do not turn into neon color.",
   },
   {
     key: "hdrHeadroom",
@@ -1318,9 +1320,17 @@ function getTargetHdrCapacity(settings = state.settings) {
   const hdrColor = settings.hdrSaturation ?? neutralSettings.hdrSaturation;
   const colorStops =
     Math.abs(hdrColor - neutralSettings.hdrSaturation) > NEUTRAL_SETTING_EPSILON
-      ? Math.max(0.75, Math.log2(Math.max(1, hdrColor)))
+      ? Math.max(0.25, Math.log2(Math.max(1, getEffectiveHdrSaturation(settings))))
       : 0;
   return clamp(Math.max(headroomStops, brightnessStops, colorStops), 0, 6);
+}
+
+function getEffectiveHdrSaturation(settings = state.settings) {
+  const raw = settings.hdrSaturation ?? neutralSettings.hdrSaturation;
+  const delta = raw - neutralSettings.hdrSaturation;
+  if (Math.abs(delta) <= NEUTRAL_SETTING_EPSILON) return neutralSettings.hdrSaturation;
+  const compressed = (1 - Math.exp(-Math.abs(delta) * 0.7)) * HDR_COLOR_MAX_DELTA;
+  return neutralSettings.hdrSaturation + Math.sign(delta) * compressed;
 }
 
 async function encodeUltraHdrBlob(input, options = {}) {
@@ -1420,7 +1430,7 @@ function fillSdrAndHdrBuffers(data, hdrBuffer, settings) {
   const power = settings.highlightPower;
   const headroom = settings.hdrHeadroom;
   const hdrBrightness = settings.hdrBrightness ?? neutralSettings.hdrBrightness;
-  const hdrSat = settings.hdrSaturation;
+  const hdrSat = getEffectiveHdrSaturation(settings);
   const gamma = settings.gainmapGamma;
 
   for (let i = 0, h = 0; i < data.length; i += 4, h += 3) {
@@ -1454,7 +1464,7 @@ function fillSdrAndHdrBuffers(data, hdrBuffer, settings) {
     let mask = smoothstep(threshold, threshold + softness, ll);
     mask = Math.pow(clamp01(mask), power);
     const gainResponse = Math.pow(mask, 1 / gamma);
-    const colorResponse = 0.15 + gainResponse * 0.85;
+    const colorResponse = HDR_COLOR_RESPONSE_FLOOR + gainResponse * (1 - HDR_COLOR_RESPONSE_FLOOR);
 
     const baseHdrSat = 1 + (hdrSat - 1) * colorResponse * HDR_COLOR_BASE_STRENGTH;
     if (Math.abs(baseHdrSat - 1) > NEUTRAL_SETTING_EPSILON) {
@@ -1523,7 +1533,7 @@ function processPixels(data, settings, mode) {
   const power = settings.highlightPower;
   const headroom = settings.hdrHeadroom;
   const hdrBrightness = settings.hdrBrightness ?? neutralSettings.hdrBrightness;
-  const hdrSat = settings.hdrSaturation;
+  const hdrSat = getEffectiveHdrSaturation(settings);
   const gamma = settings.gainmapGamma;
 
   for (let i = 0; i < data.length; i += 4) {
@@ -1557,7 +1567,7 @@ function processPixels(data, settings, mode) {
     let mask = smoothstep(threshold, threshold + softness, ll);
     mask = Math.pow(clamp01(mask), power);
     const gainResponse = Math.pow(mask, 1 / gamma);
-    const colorResponse = 0.15 + gainResponse * 0.85;
+    const colorResponse = HDR_COLOR_RESPONSE_FLOOR + gainResponse * (1 - HDR_COLOR_RESPONSE_FLOOR);
 
     if (mode === "hdr") {
       const baseHdrSat = 1 + (hdrSat - 1) * colorResponse * HDR_COLOR_BASE_STRENGTH;
