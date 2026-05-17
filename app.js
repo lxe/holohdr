@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517y";
+const STATIC_ASSET_VERSION = "20260517z";
 const HDR_COLOR_BASE_STRENGTH = 0.18;
 const HDR_COLOR_MAX_DELTA = 0.28;
 const HDR_COLOR_RESPONSE_FLOOR = 0.06;
@@ -384,9 +384,10 @@ for (const target of [previewCanvas, hdrPreviewImage]) {
   target.addEventListener("pointermove", updatePreviewGesture);
   target.addEventListener("pointerup", endPreviewGesture);
   target.addEventListener("pointercancel", endPreviewGesture);
-  target.addEventListener("pointerleave", endPreviewGesture);
   target.addEventListener("contextmenu", (event) => event.preventDefault());
 }
+window.addEventListener("pointerup", endPreviewGesture);
+window.addEventListener("pointercancel", endPreviewGesture);
 
 function buildControls() {
   Object.values(sliderStacks).forEach((stack) => {
@@ -1111,14 +1112,32 @@ function activePreviewElement() {
 function showCanvasPreview() {
   if (!state.previewSource) return;
   previewCanvas.style.display = "block";
+  previewCanvas.style.opacity = "1";
   hdrPreviewImage.style.display = "none";
+  hdrPreviewImage.style.opacity = "1";
   applyImageTransform();
 }
 
 function showHdrPreview() {
   if (!state.previewSource || !hdrPreviewImage.src) return;
   previewCanvas.style.display = "none";
+  previewCanvas.style.opacity = "1";
   hdrPreviewImage.style.display = "block";
+  hdrPreviewImage.style.opacity = "1";
+  applyImageTransform();
+}
+
+function showOriginalPreview() {
+  if (!state.previewSource) return;
+  previewCanvas.style.display = "block";
+  previewCanvas.style.opacity = "1";
+  if (hdrPreviewImage.src) {
+    hdrPreviewImage.style.display = "block";
+    hdrPreviewImage.style.opacity = "0";
+  } else {
+    hdrPreviewImage.style.display = "none";
+    hdrPreviewImage.style.opacity = "1";
+  }
   applyImageTransform();
 }
 
@@ -1174,10 +1193,11 @@ function renderPreview() {
   previewCanvas.width = source.width;
   previewCanvas.height = source.height;
   previewCtx.drawImage(source, 0, 0);
-  showCanvasPreview();
   if (state.peekingOriginal) {
+    showOriginalPreview();
     return;
   }
+  showCanvasPreview();
 
   const imageData = previewCtx.getImageData(0, 0, source.width, source.height);
   processPixels(imageData.data, state.settings, state.previewMode);

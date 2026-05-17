@@ -127,6 +127,7 @@ select {
 
 #previewCanvas,
 #hdrPreviewImage {
+  grid-area: 1 / 1;
   max-width: 100vw;
   max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 72px);
   width: auto;
@@ -137,6 +138,7 @@ select {
   touch-action: none;
   transform-origin: center center;
   will-change: transform;
+  transition: opacity 80ms ease;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
