@@ -8,15 +8,105 @@ const SESSION_STORE = "session";
 const SESSION_KEY = "last";
 
 const sliders = [
-  { key: "sdrExposure", label: "Exposure", min: -1, max: 1.5, step: 0.01, group: "tone" },
-  { key: "sdrContrast", label: "Contrast", min: 0.5, max: 1.5, step: 0.01, group: "tone" },
-  { key: "sdrSaturation", label: "SDR color", min: 0, max: 2.5, step: 0.01, group: "color" },
-  { key: "hdrSaturation", label: "HDR color", min: 0, max: 2.5, step: 0.01, group: "color" },
-  { key: "hdrHeadroom", label: "Headroom", min: 1, max: 12, step: 0.1, group: "headroom" },
-  { key: "highlightThreshold", label: "Threshold", min: 0, max: 1, step: 0.01, group: "threshold" },
-  { key: "highlightSoftness", label: "Softness", min: 0.01, max: 1, step: 0.01, group: "softness" },
-  { key: "highlightPower", label: "Power", min: 0.1, max: 5, step: 0.01, group: "power" },
-  { key: "gainmapGamma", label: "Gamma", min: 0.1, max: 4, step: 0.01, group: "gamma" },
+  {
+    key: "sdrExposure",
+    label: "Exposure",
+    min: -1,
+    max: 1.5,
+    step: 0.01,
+    group: "tone",
+    description: "Moves the whole SDR base brighter or darker before the HDR gain is built.",
+  },
+  {
+    key: "sdrContrast",
+    label: "Contrast",
+    min: 0.5,
+    max: 1.5,
+    step: 0.01,
+    group: "tone",
+    description: "Expands or compresses the SDR base around middle gray.",
+  },
+  {
+    key: "sdrShadows",
+    label: "Shadows",
+    min: -1,
+    max: 1,
+    step: 0.01,
+    group: "tone",
+    description: "Lifts or deepens darker colors without moving the bright parts as much.",
+  },
+  {
+    key: "sdrHighlights",
+    label: "Highlights",
+    min: -1,
+    max: 1,
+    step: 0.01,
+    group: "tone",
+    description: "Recovers or boosts the brighter SDR areas before HDR processing.",
+  },
+  {
+    key: "sdrSaturation",
+    label: "SDR color",
+    min: 0,
+    max: 2.5,
+    step: 0.01,
+    group: "color",
+    description: "Changes the color intensity of the SDR fallback that every app can display.",
+  },
+  {
+    key: "hdrSaturation",
+    label: "HDR color",
+    min: 0,
+    max: 2.5,
+    step: 0.01,
+    group: "color",
+    description: "Adds extra saturation only where the HDR gain response is active.",
+  },
+  {
+    key: "hdrHeadroom",
+    label: "Headroom",
+    min: 1,
+    max: 12,
+    step: 0.1,
+    group: "headroom",
+    description: "Sets the maximum HDR brightness multiplier available to boosted areas.",
+  },
+  {
+    key: "highlightThreshold",
+    label: "Threshold",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    group: "threshold",
+    description: "Chooses how bright a pixel must be before HDR gain starts.",
+  },
+  {
+    key: "highlightSoftness",
+    label: "Softness",
+    min: 0.01,
+    max: 1,
+    step: 0.01,
+    group: "softness",
+    description: "Controls how gradually the HDR boost ramps from midtones into highlights.",
+  },
+  {
+    key: "highlightPower",
+    label: "Power",
+    min: 0.1,
+    max: 5,
+    step: 0.01,
+    group: "power",
+    description: "Shapes the HDR mask; lower values spread the effect, higher values isolate it.",
+  },
+  {
+    key: "gainmapGamma",
+    label: "Gamma",
+    min: 0.1,
+    max: 4,
+    step: 0.01,
+    group: "gamma",
+    description: "Bends the gain response so HDR boost appears earlier or later in the ramp.",
+  },
 ];
 
 const presets = {
@@ -24,6 +114,8 @@ const presets = {
   vibrant: {
     sdrExposure: 0.26,
     sdrContrast: 0.93,
+    sdrShadows: 0,
+    sdrHighlights: 0,
     sdrSaturation: 1.34,
     hdrHeadroom: 5.5,
     highlightThreshold: 0.14,
@@ -35,6 +127,8 @@ const presets = {
   holosomnia: {
     sdrExposure: 0.1,
     sdrContrast: 1.02,
+    sdrShadows: 0,
+    sdrHighlights: 0,
     sdrSaturation: 1.12,
     hdrHeadroom: 5.5,
     highlightThreshold: 0.23,
@@ -46,6 +140,8 @@ const presets = {
   instagram_safe: {
     sdrExposure: 0,
     sdrContrast: 1,
+    sdrShadows: 0,
+    sdrHighlights: 0,
     sdrSaturation: 1,
     hdrHeadroom: 3,
     highlightThreshold: 0.55,
@@ -57,6 +153,8 @@ const presets = {
   instagram_bright: {
     sdrExposure: -0.05,
     sdrContrast: 1,
+    sdrShadows: 0,
+    sdrHighlights: 0,
     sdrSaturation: 1.03,
     hdrHeadroom: 5,
     highlightThreshold: 0.35,
@@ -68,6 +166,8 @@ const presets = {
   instagram_blast: {
     sdrExposure: -0.1,
     sdrContrast: 1.05,
+    sdrShadows: 0,
+    sdrHighlights: 0,
     sdrSaturation: 1.08,
     hdrHeadroom: 7,
     highlightThreshold: 0.22,
@@ -194,7 +294,7 @@ function buildControls() {
   Object.values(sliderStacks).forEach((stack) => {
     stack.innerHTML = "";
   });
-  for (const { key, label, min, max, step, group } of sliders) {
+  for (const { key, label, min, max, step, group, description } of sliders) {
     const card = document.createElement("div");
     card.className = "slider-card";
     card.innerHTML = `
@@ -203,6 +303,7 @@ function buildControls() {
         <span class="slider-value" id="${key}Value"></span>
       </div>
       <input id="${key}" type="range" min="${min}" max="${max}" step="${step}" />
+      <p class="slider-description">${description}</p>
     `;
     sliderStacks[group].appendChild(card);
 
@@ -583,6 +684,8 @@ async function getExportImageDataUrl() {
 function processPixels(data, settings, mode) {
   const exposure = 2 ** settings.sdrExposure;
   const contrast = settings.sdrContrast;
+  const shadows = settings.sdrShadows ?? 0;
+  const highlights = settings.sdrHighlights ?? 0;
   const sdrSat = settings.sdrSaturation;
   const threshold = settings.highlightThreshold;
   const softness = settings.highlightSoftness;
@@ -599,6 +702,16 @@ function processPixels(data, settings, mode) {
     r = clamp01((r * exposure - 0.5) * contrast + 0.5);
     g = clamp01((g * exposure - 0.5) * contrast + 0.5);
     b = clamp01((b * exposure - 0.5) * contrast + 0.5);
+
+    const tonalLuma = luma(r, g, b);
+    const shadowMask = 1 - smoothstep(0.0, 0.55, tonalLuma);
+    const highlightMask = smoothstep(0.45, 1.0, tonalLuma);
+    r = applyTonalRange(r, shadows, shadowMask);
+    g = applyTonalRange(g, shadows, shadowMask);
+    b = applyTonalRange(b, shadows, shadowMask);
+    r = applyTonalRange(r, highlights, highlightMask);
+    g = applyTonalRange(g, highlights, highlightMask);
+    b = applyTonalRange(b, highlights, highlightMask);
 
     const sdrLuma = luma(r, g, b);
     r = clamp01(sdrLuma + (r - sdrLuma) * sdrSat);
@@ -649,6 +762,11 @@ function processPixels(data, settings, mode) {
 function toneMapPreview(value) {
   const shoulder = Math.max(0, value - 1);
   return clamp01(value / (1 + shoulder * 0.42));
+}
+
+function applyTonalRange(value, amount, mask) {
+  const strength = amount * mask * 0.75;
+  return clamp01(strength >= 0 ? value + (1 - value) * strength : value + value * strength);
 }
 
 function srgbToLinear(value) {

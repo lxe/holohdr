@@ -310,7 +310,7 @@ select {
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .slider-value {
@@ -320,6 +320,13 @@ select {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 760;
+}
+
+.slider-description {
+  margin: 2px 0 7px;
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 input[type="range"] {

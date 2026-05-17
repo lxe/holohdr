@@ -172,11 +172,13 @@ def render_ultra_hdr(image, settings):
     encoded = np.asarray(image, dtype=np.float32) / 255.0
     icc = lxe._load_icc_profile("sRGB", "")
 
-    sdr_encoded = lxe._adjust_sdr(
+    sdr_encoded = adjust_sdr_for_app(
         encoded,
-        float(settings.get("sdrExposure", 0.0)),
-        float(settings.get("sdrContrast", 1.0)),
-        float(settings.get("sdrSaturation", 1.0)),
+        exposure_ev=float(settings.get("sdrExposure", 0.0)),
+        contrast=float(settings.get("sdrContrast", 1.0)),
+        shadows=float(settings.get("sdrShadows", 0.0)),
+        highlights=float(settings.get("sdrHighlights", 0.0)),
+        saturation=float(settings.get("sdrSaturation", 1.0)),
     )
     baseline_linear = lxe._srgb_to_linear(sdr_encoded)
     hdr_linear, _mask = lxe._make_hdr_linear(
@@ -223,6 +225,27 @@ def render_ultra_hdr(image, settings):
                 os.unlink(path)
             except FileNotFoundError:
                 pass
+
+
+def adjust_sdr_for_app(image, exposure_ev, contrast, shadows, highlights, saturation):
+    out = image * (2.0 ** float(exposure_ev))
+    out = (out - 0.5) * float(contrast) + 0.5
+    out = np.clip(out, 0.0, 1.0).astype(np.float32)
+
+    tonal_luma = lxe._luma(out)
+    shadow_mask = 1.0 - lxe._smoothstep(0.0, 0.55, tonal_luma)
+    highlight_mask = lxe._smoothstep(0.45, 1.0, tonal_luma)
+    out = apply_tonal_range(out, float(shadows), shadow_mask[..., None])
+    out = apply_tonal_range(out, float(highlights), highlight_mask[..., None])
+    out = lxe._adjust_saturation(out, float(saturation), amount=1.0)
+    return np.clip(out, 0.0, 1.0).astype(np.float32)
+
+
+def apply_tonal_range(image, amount, mask):
+    strength = float(amount) * mask * 0.75
+    lifted = image + (1.0 - image) * np.maximum(strength, 0.0)
+    deepened = image + image * np.minimum(strength, 0.0)
+    return np.where(strength >= 0.0, lifted, deepened)
 
 
 def decode_data_url(value):
