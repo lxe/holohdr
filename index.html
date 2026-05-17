@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#171717" />
+    <title>HDR Gain Map Tuner</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>HDR Gain Map Tuner</h1>
+          <p id="imageMeta">No image loaded</p>
+        </div>
+        <label class="file-button">
+          <input id="fileInput" type="file" accept="image/*" />
+          Open
+        </label>
+      </header>
+
+      <section class="workspace">
+        <section class="preview-panel" aria-label="Image preview">
+          <canvas id="previewCanvas"></canvas>
+          <div id="emptyState" class="empty-state">
+            <strong>Open an image</strong>
+          </div>
+        </section>
+
+        <aside class="controls-panel" aria-label="Adjustment controls">
+          <div class="control-row compact">
+            <label for="presetSelect">Preset</label>
+            <select id="presetSelect">
+              <option value="vibrant">Vibrant recovery</option>
+              <option value="holosomnia">Holosomnia</option>
+              <option value="instagram_safe">Instagram safe</option>
+              <option value="instagram_bright">Instagram bright</option>
+              <option value="instagram_blast">Instagram blast</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          <div class="segmented" role="group" aria-label="Preview mode">
+            <button class="segment active" type="button" data-mode="hdr">HDR sim</button>
+            <button class="segment" type="button" data-mode="sdr">SDR</button>
+            <button class="segment" type="button" data-mode="gain">Gain</button>
+          </div>
+
+          <div id="sliderStack" class="slider-stack"></div>
+
+          <div class="export-box">
+            <div class="control-row compact">
+              <label for="exportSize">Export</label>
+              <select id="exportSize">
+                <option value="full">Full size</option>
+                <option value="4096">4096 px max</option>
+                <option value="2048">2048 px max</option>
+                <option value="preview">Preview size</option>
+              </select>
+            </div>
+            <div class="button-grid">
+              <button id="exportJpeg" type="button" disabled>Export JPEG</button>
+              <button id="exportGain" type="button" disabled>Export Gain</button>
+            </div>
+            <p id="statusLine" class="status-line">Ready</p>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

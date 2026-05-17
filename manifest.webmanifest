@@ -1,0 +1,9 @@
+{
+  "name": "HDR Gain Map Tuner",
+  "short_name": "HDR Tuner",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#171717",
+  "theme_color": "#171717",
+  "icons": []
+}
