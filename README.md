@@ -49,6 +49,60 @@ application/wasm .wasm
 
 Ultra HDR JPEG export is handled in the browser with WebAssembly from `open-ultrahdr-wasm`, built from upstream `google/libultrahdr`.
 
+## WebAssembly Build Notes
+
+The vendored files in `vendor/open-ultrahdr/` are an optimized browser build based on `open-ultrahdr-wasm` 0.2.0 and upstream `google/libultrahdr`.
+
+The important build goals were:
+
+- Keep Ultra HDR encoding fully client-side.
+- Stay compatible with mobile Safari.
+- Avoid requiring cross-origin isolation headers.
+- Keep preview/export work off the main thread where possible.
+- Expose libultrahdr options HoloHDR needs for previews, including realtime mode and multi-channel gain maps.
+
+The build is intentionally single-threaded. Emscripten pthreads can improve throughput, but browsers require `SharedArrayBuffer` and cross-origin isolation for pthread-backed WASM. HoloHDR avoids that requirement so the app can run as a simple static site on iPhone Safari and other mobile browsers.
+
+The optimized build uses the same shape as the upstream wrapper, with these key Emscripten choices:
+
+```bash
+emcmake cmake -S . -B build-wasm \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS_RELEASE="-O3 -flto -msimd128"
+
+emmake cmake --build build-wasm --config Release
+```
+
+For an equivalent manual `emcc`/`em++` setup, the relevant flags are:
+
+```text
+-O3
+-flto
+-msimd128
+-s MODULARIZE=1
+-s EXPORT_ES6=1
+-s ENVIRONMENT=web,worker
+-s ALLOW_MEMORY_GROWTH=1
+-s FILESYSTEM=0
+```
+
+Do not enable pthreads unless the deployment also sends the required cross-origin isolation headers and you are willing to drop compatibility with browsers that do not expose `SharedArrayBuffer` in that context. The current build uses SIMD but no pthreads, which is the safer compatibility/performance tradeoff for HoloHDR.
+
+After rebuilding, replace:
+
+```text
+vendor/open-ultrahdr/open_ultrahdr.js
+vendor/open-ultrahdr/open_ultrahdr.wasm
+```
+
+Then verify:
+
+```bash
+node --check app.js
+node --check ultrahdr-worker.js
+python3 -m json.tool manifest.webmanifest >/dev/null
+```
+
 ## Export Behavior
 
 - `Ultra HDR` locally builds an adjusted SDR JPEG plus a linear HDR RGB buffer, then writes an Ultra HDR / ISO 21496 gain-map JPEG in WebAssembly.
