@@ -15,7 +15,7 @@ const sliders = [
     max: 1.5,
     step: 0.01,
     group: "tone",
-    description: "Moves the whole SDR base brighter or darker before the HDR gain is built.",
+    description: "Move right to brighten the entire image. Move left if whites, skies, or skin are clipping too early.",
   },
   {
     key: "sdrContrast",
@@ -24,7 +24,7 @@ const sliders = [
     max: 1.5,
     step: 0.01,
     group: "tone",
-    description: "Expands or compresses the SDR base around middle gray.",
+    description: "Move right for more punch between dark and light areas. Move left to soften harsh contrast and preserve color detail.",
   },
   {
     key: "sdrShadows",
@@ -33,7 +33,7 @@ const sliders = [
     max: 1,
     step: 0.01,
     group: "shadows",
-    description: "Lifts or deepens darker colors without moving the bright parts as much.",
+    description: "Move right to brighten dark greens, purples, hair, and other shadow detail. Move left to make dark areas richer.",
   },
   {
     key: "sdrHighlights",
@@ -42,7 +42,7 @@ const sliders = [
     max: 1,
     step: 0.01,
     group: "highlights",
-    description: "Recovers or boosts the brighter SDR areas before HDR processing.",
+    description: "Move left to pull back bright clouds, sun, and white fabric before export. Move right to make bright areas pop more.",
   },
   {
     key: "sdrSaturation",
@@ -51,7 +51,7 @@ const sliders = [
     max: 2.5,
     step: 0.01,
     group: "color",
-    description: "Changes the color intensity of the SDR fallback that every app can display.",
+    description: "Controls color in the normal SDR image. Raise this when Instagram makes purples, greens, or flowers look dull.",
   },
   {
     key: "hdrSaturation",
@@ -60,7 +60,7 @@ const sliders = [
     max: 2.5,
     step: 0.01,
     group: "color",
-    description: "Adds extra saturation only where the HDR gain response is active.",
+    description: "Controls color only in areas receiving HDR boost. Too much can make glowing clouds or sunsets look neon.",
   },
   {
     key: "hdrHeadroom",
@@ -69,7 +69,7 @@ const sliders = [
     max: 12,
     step: 0.1,
     group: "headroom",
-    description: "Sets the maximum HDR brightness multiplier available to boosted areas.",
+    description: "Sets how bright the HDR layer is allowed to get. Higher values make highlights glow harder but can blow out uploads.",
   },
   {
     key: "highlightThreshold",
@@ -78,7 +78,7 @@ const sliders = [
     max: 1,
     step: 0.01,
     group: "threshold",
-    description: "Chooses how bright a pixel must be before HDR gain starts.",
+    description: "Move left to let midtones get HDR lift. Move right so only the brightest parts, like sun and clouds, get boosted.",
   },
   {
     key: "highlightSoftness",
@@ -87,7 +87,7 @@ const sliders = [
     max: 1,
     step: 0.01,
     group: "softness",
-    description: "Controls how gradually the HDR boost ramps from midtones into highlights.",
+    description: "Move right for a smoother transition into HDR. Move left for a harder edge where boost starts.",
   },
   {
     key: "highlightPower",
@@ -96,7 +96,7 @@ const sliders = [
     max: 5,
     step: 0.01,
     group: "power",
-    description: "Shapes the HDR mask; lower values spread the effect, higher values isolate it.",
+    description: "Move left to brighten more of the image with HDR. Move right to keep HDR mostly on tiny, very bright highlights.",
   },
   {
     key: "gainmapGamma",
@@ -105,37 +105,37 @@ const sliders = [
     max: 4,
     step: 0.01,
     group: "gamma",
-    description: "Bends the gain response so HDR boost appears earlier or later in the ramp.",
+    description: "Move lower to bring HDR lift into midtones sooner. Move higher to keep the boost concentrated near peak highlights.",
   },
 ];
 
 const presets = {
   custom: null,
   vibrant: {
-    sdrExposure: 0.26,
-    sdrContrast: 0.93,
-    sdrShadows: 0,
-    sdrHighlights: 0,
-    sdrSaturation: 1.34,
-    hdrHeadroom: 5.5,
-    highlightThreshold: 0.14,
-    highlightSoftness: 0.9,
-    highlightPower: 0.54,
-    hdrSaturation: 1.72,
-    gainmapGamma: 0.68,
+    sdrExposure: 0.12,
+    sdrContrast: 0.95,
+    sdrShadows: 0.18,
+    sdrHighlights: -0.12,
+    sdrSaturation: 1.18,
+    hdrHeadroom: 3.8,
+    highlightThreshold: 0.26,
+    highlightSoftness: 0.68,
+    highlightPower: 0.78,
+    hdrSaturation: 1.22,
+    gainmapGamma: 0.9,
   },
   holosomnia: {
-    sdrExposure: 0.1,
-    sdrContrast: 1.02,
-    sdrShadows: 0,
-    sdrHighlights: 0,
-    sdrSaturation: 1.12,
-    hdrHeadroom: 5.5,
-    highlightThreshold: 0.23,
-    highlightSoftness: 0.74,
-    highlightPower: 0.75,
-    hdrSaturation: 1.46,
-    gainmapGamma: 0.75,
+    sdrExposure: 0.08,
+    sdrContrast: 0.98,
+    sdrShadows: 0.12,
+    sdrHighlights: -0.08,
+    sdrSaturation: 1.14,
+    hdrHeadroom: 4.2,
+    highlightThreshold: 0.28,
+    highlightSoftness: 0.62,
+    highlightPower: 0.85,
+    hdrSaturation: 1.26,
+    gainmapGamma: 0.9,
   },
   instagram_safe: {
     sdrExposure: 0,
@@ -151,30 +151,30 @@ const presets = {
     gainmapGamma: 1,
   },
   instagram_bright: {
-    sdrExposure: -0.05,
-    sdrContrast: 1,
-    sdrShadows: 0,
-    sdrHighlights: 0,
-    sdrSaturation: 1.03,
-    hdrHeadroom: 5,
-    highlightThreshold: 0.35,
-    highlightSoftness: 0.5,
-    highlightPower: 0.9,
-    hdrSaturation: 1.18,
-    gainmapGamma: 0.9,
+    sdrExposure: 0.04,
+    sdrContrast: 0.97,
+    sdrShadows: 0.08,
+    sdrHighlights: -0.05,
+    sdrSaturation: 1.08,
+    hdrHeadroom: 3.6,
+    highlightThreshold: 0.34,
+    highlightSoftness: 0.52,
+    highlightPower: 0.95,
+    hdrSaturation: 1.14,
+    gainmapGamma: 0.95,
   },
   instagram_blast: {
-    sdrExposure: -0.1,
-    sdrContrast: 1.05,
-    sdrShadows: 0,
-    sdrHighlights: 0,
-    sdrSaturation: 1.08,
-    hdrHeadroom: 7,
-    highlightThreshold: 0.22,
-    highlightSoftness: 0.68,
-    highlightPower: 0.6,
-    hdrSaturation: 1.32,
-    gainmapGamma: 0.8,
+    sdrExposure: 0.06,
+    sdrContrast: 0.96,
+    sdrShadows: 0.12,
+    sdrHighlights: -0.1,
+    sdrSaturation: 1.12,
+    hdrHeadroom: 4.8,
+    highlightThreshold: 0.24,
+    highlightSoftness: 0.66,
+    highlightPower: 0.76,
+    hdrSaturation: 1.28,
+    gainmapGamma: 0.85,
   },
 };
 
@@ -316,8 +316,13 @@ function buildControls() {
     const descriptionEl = card.querySelector(".slider-description");
     help.addEventListener("click", () => {
       const expanded = help.getAttribute("aria-expanded") === "true";
+      document.querySelectorAll(".help-button[aria-expanded='true']").forEach((button) => {
+        if (button === help) return;
+        button.setAttribute("aria-expanded", "false");
+        button.closest(".slider-card")?.querySelector(".slider-description")?.setAttribute("hidden", "");
+      });
       help.setAttribute("aria-expanded", String(!expanded));
-      descriptionEl.hidden = expanded;
+      descriptionEl.toggleAttribute("hidden", expanded);
     });
 
     const input = document.getElementById(key);
