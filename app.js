@@ -32,7 +32,7 @@ const sliders = [
     min: -1,
     max: 1,
     step: 0.01,
-    group: "tone",
+    group: "shadows",
     description: "Lifts or deepens darker colors without moving the bright parts as much.",
   },
   {
@@ -41,7 +41,7 @@ const sliders = [
     min: -1,
     max: 1,
     step: 0.01,
-    group: "tone",
+    group: "highlights",
     description: "Recovers or boosts the brighter SDR areas before HDR processing.",
   },
   {
@@ -212,6 +212,8 @@ const toolRail = document.getElementById("toolRail");
 const presetSelect = document.getElementById("presetSelect");
 const sliderStacks = {
   tone: document.getElementById("toneSliderStack"),
+  shadows: document.getElementById("shadowsSliderStack"),
+  highlights: document.getElementById("highlightsSliderStack"),
   color: document.getElementById("colorSliderStack"),
   headroom: document.getElementById("headroomSliderStack"),
   threshold: document.getElementById("thresholdSliderStack"),
