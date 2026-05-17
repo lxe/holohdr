@@ -250,6 +250,10 @@ select {
   background: var(--control);
 }
 
+.menu-action.danger {
+  color: #ff9a9f;
+}
+
 .control-row {
   display: grid;
   gap: 7px;
@@ -489,21 +493,30 @@ input[type="range"]::-moz-range-thumb {
     right: 8px;
     bottom: max(8px, env(safe-area-inset-bottom));
     height: 54px;
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    align-content: center;
+    display: flex;
+    align-items: center;
     gap: 4px;
     padding: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
     border-radius: 14px;
     background: rgba(16, 16, 15, 0.9);
     box-shadow: 0 16px 54px rgba(0, 0, 0, 0.48);
     pointer-events: auto;
+    scrollbar-width: none;
     backdrop-filter: blur(22px) saturate(1.15);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tool-rail::-webkit-scrollbar {
+    display: none;
   }
 
   .tool-button {
     min-height: 42px;
-    min-width: 0;
+    min-width: 44px;
+    flex: 0 0 44px;
     border-radius: 10px;
   }
 

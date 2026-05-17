@@ -19,11 +19,14 @@ const sliders = [
 ];
 
 const toolTitles = {
-  menu: "Menu",
+  open: "Open",
   look: "Look",
   tone: "Tone",
   color: "Color",
   hdr: "HDR",
+  size: "Size",
+  save: "Export",
+  clear: "Clear",
 };
 
 const presets = {
@@ -170,6 +173,7 @@ panelClose.addEventListener("click", () => setControlsOpen(false));
 document.querySelectorAll(".tool-button").forEach((button) => {
   button.addEventListener("click", () => {
     setActiveTool(button.dataset.tool);
+    button.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     setControlsOpen(true);
   });
 });
