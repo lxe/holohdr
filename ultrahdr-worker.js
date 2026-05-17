@@ -1,4 +1,4 @@
-const STATIC_ASSET_VERSION = "20260517t";
+const STATIC_ASSET_VERSION = "20260517u";
 
 let wasmPromise = null;
 
