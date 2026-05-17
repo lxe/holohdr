@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517m";
+const STATIC_ASSET_VERSION = "20260517n";
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
@@ -128,6 +128,8 @@ const neutralSettings = {
   hdrSaturation: 1,
   gainmapGamma: 1,
 };
+
+const NEUTRAL_SETTING_EPSILON = 0.000001;
 
 const presets = {
   reset: neutralSettings,
@@ -1117,8 +1119,14 @@ function clearHdrPreview() {
   hdrPreviewImage.style.display = "none";
 }
 
+function isNeutralSettings(settings = state.settings) {
+  return Object.entries(neutralSettings).every(
+    ([key, value]) => Math.abs((settings[key] ?? value) - value) <= NEUTRAL_SETTING_EPSILON,
+  );
+}
+
 function isTrueHdrPreviewActive() {
-  return state.previewMode === "hdr" && state.ultraHdrAvailable;
+  return state.previewMode === "hdr" && state.ultraHdrAvailable && !isNeutralSettings();
 }
 
 function schedulePreview() {
@@ -1155,7 +1163,8 @@ function renderPreview() {
   }
 
   const imageData = previewCtx.getImageData(0, 0, source.width, source.height);
-  processPixels(imageData.data, state.settings, state.previewMode);
+  const renderMode = state.previewMode === "hdr" && isNeutralSettings() ? "sdr" : state.previewMode;
+  processPixels(imageData.data, state.settings, renderMode);
   previewCtx.putImageData(imageData, 0, 0);
 }
 
@@ -1263,10 +1272,11 @@ function selectedExportMaxSide() {
 }
 
 function makeUltraHdrOptions(options = {}) {
+  const targetHdrCapacity = Math.log2(Math.max(1, state.settings.hdrHeadroom));
   return {
     baseQuality: 95,
     gainMapQuality: 95,
-    targetHdrCapacity: clamp(Math.log2(Math.max(1, state.settings.hdrHeadroom)), 1, 6),
+    targetHdrCapacity: clamp(targetHdrCapacity, 0, 6),
     includeIsoMetadata: true,
     includeUltrahdrV1: true,
     gainMapScale: options.gainMapScale ?? 1,
