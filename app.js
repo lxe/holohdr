@@ -87,6 +87,8 @@ const fileInput = document.getElementById("fileInput");
 const previewCanvas = document.getElementById("previewCanvas");
 const emptyState = document.getElementById("emptyState");
 const imageMeta = document.getElementById("imageMeta");
+const controlsPanel = document.getElementById("controlsPanel");
+const sheetToggle = document.getElementById("sheetToggle");
 const presetSelect = document.getElementById("presetSelect");
 const sliderStack = document.getElementById("sliderStack");
 const statusLine = document.getElementById("statusLine");
@@ -126,6 +128,10 @@ document.querySelectorAll(".segment").forEach((button) => {
 exportJpeg.addEventListener("click", () => exportProcessed("jpeg"));
 exportGain.addEventListener("click", () => exportProcessed("gain"));
 exportUltra.addEventListener("click", () => exportUltraHdr());
+sheetToggle.addEventListener("click", () => setControlsOpen(!controlsPanel.classList.contains("open")));
+previewCanvas.addEventListener("click", () => {
+  if (window.matchMedia("(max-width: 860px)").matches) setControlsOpen(false);
+});
 
 function buildControls() {
   sliderStack.innerHTML = "";
@@ -183,6 +189,7 @@ async function loadFile(file) {
     exportUltra.disabled = false;
     exportJpeg.disabled = false;
     exportGain.disabled = false;
+    setControlsOpen(false);
     schedulePreview();
     setStatus("Ready");
   } catch (error) {
@@ -191,6 +198,11 @@ async function loadFile(file) {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+function setControlsOpen(open) {
+  controlsPanel.classList.toggle("open", open);
+  sheetToggle.setAttribute("aria-expanded", String(open));
 }
 
 function schedulePreview() {

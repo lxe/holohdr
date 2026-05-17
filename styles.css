@@ -28,6 +28,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  overflow: hidden;
 }
 
 button,
@@ -82,6 +83,7 @@ select {
   gap: 12px;
   border-bottom: 1px solid var(--line);
   background: #1f1e1c;
+  z-index: 3;
 }
 
 .topbar h1 {
@@ -120,7 +122,7 @@ select {
   min-height: 0;
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: 12px;
   overflow: hidden;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
@@ -158,10 +160,28 @@ select {
 
 .controls-panel {
   min-height: 0;
-  overflow: auto;
-  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
   border-left: 1px solid var(--line);
   background: var(--panel);
+}
+
+.sheet-toggle {
+  display: none;
+}
+
+.controls-scroll {
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.top-controls {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .control-row {
@@ -186,7 +206,7 @@ select {
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   padding: 4px;
-  margin: 12px 0;
+  margin: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #1a1a1a;
@@ -207,14 +227,12 @@ select {
 
 .slider-stack {
   display: grid;
-  gap: 11px;
+  gap: 7px;
 }
 
 .slider-card {
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-2);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
 }
 
 .slider-head {
@@ -240,8 +258,8 @@ input[type="range"] {
 }
 
 .export-box {
-  margin-top: 14px;
-  padding-top: 14px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
@@ -282,18 +300,143 @@ input[type="range"] {
     min-height: 100dvh;
   }
 
+  body {
+    overflow: hidden;
+  }
+
+  .topbar {
+    position: fixed;
+    inset: 0 0 auto;
+    min-height: 58px;
+    padding: max(8px, env(safe-area-inset-top)) 10px 8px;
+    border-bottom: 0;
+    background: linear-gradient(rgba(20, 20, 20, 0.9), rgba(20, 20, 20, 0.56), transparent);
+  }
+
+  .topbar h1 {
+    font-size: 17px;
+  }
+
+  .topbar p {
+    margin-top: 3px;
+    max-width: 58vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+  }
+
+  .file-button {
+    min-height: 38px;
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(42, 40, 37, 0.86);
+    backdrop-filter: blur(12px);
+  }
+
   .workspace {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(280px, 48dvh) minmax(0, 1fr);
+    display: block;
+    min-height: 100dvh;
   }
 
   .preview-panel {
-    padding: 10px;
+    position: fixed;
+    inset: 0;
+    min-height: 100dvh;
+    padding: calc(env(safe-area-inset-top) + 58px) 8px calc(env(safe-area-inset-bottom) + 76px);
+  }
+
+  #previewCanvas {
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 136px);
+  }
+
+  .empty-state {
+    min-height: 180px;
+    margin-top: 34px;
   }
 
   .controls-panel {
+    position: fixed;
+    z-index: 4;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: min(76dvh, 680px);
     border-left: 0;
     border-top: 1px solid var(--line);
+    border-radius: 14px 14px 0 0;
+    background: rgba(31, 30, 28, 0.96);
+    box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.45);
+    transform: translateY(calc(100% - 66px - env(safe-area-inset-bottom)));
+    transition: transform 180ms ease;
+    will-change: transform;
+    backdrop-filter: blur(18px);
+  }
+
+  .controls-panel.open {
+    transform: translateY(0);
+  }
+
+  .sheet-toggle {
+    min-height: 46px;
+    width: 100%;
+    display: grid;
+    grid-template-rows: 10px 1fr;
+    gap: 1px;
+    border: 0;
+    border-radius: 14px 14px 0 0;
+    background: transparent;
+    color: var(--text);
+    padding: 8px 12px 2px;
+    font-size: 13px;
+  }
+
+  .grabber {
+    width: 44px;
+    height: 4px;
+    justify-self: center;
+    border-radius: 999px;
+    background: #777066;
+  }
+
+  .controls-scroll {
+    max-height: calc(76dvh - 46px);
+    padding: 8px 10px calc(env(safe-area-inset-bottom) + 12px);
+  }
+
+  .top-controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .segmented {
+    min-height: 38px;
+  }
+
+  .segment {
+    min-height: 30px;
+    font-size: 13px;
+  }
+
+  .slider-stack {
+    gap: 0;
+  }
+
+  .slider-card {
+    padding: 6px 0;
+  }
+
+  .slider-head {
+    margin-bottom: 2px;
+  }
+
+  input[type="range"] {
+    height: 26px;
+  }
+
+  .export-box {
+    margin-top: 8px;
+    padding-top: 10px;
   }
 }
 
