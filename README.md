@@ -40,7 +40,7 @@ vendor/open-ultrahdr/open_ultrahdr.wasm
 Static deployment target:
 
 ```text
-https://holosomnia.com/hdr/
+https://holohdr.com/
 ```
 
 Ultra HDR JPEG export is handled in the browser with WebAssembly from `open-ultrahdr-wasm`, built from upstream `google/libultrahdr`.
