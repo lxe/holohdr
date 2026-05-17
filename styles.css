@@ -273,9 +273,10 @@ select {
   position: absolute;
   left: 50%;
   bottom: calc(env(safe-area-inset-bottom) + 74px);
-  width: min(640px, calc(100vw - 24px));
+  width: fit-content;
+  max-width: calc(100vw - 24px);
   max-height: min(38dvh, 310px);
-  min-width: 0;
+  min-width: min(300px, calc(100vw - 24px));
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -307,10 +308,13 @@ select {
 .tool-section.active {
   display: grid;
   gap: 10px;
+  width: max-content;
+  max-width: 100%;
 }
 
 .menu-section.active {
   gap: 8px;
+  width: clamp(320px, 28vw, 390px);
 }
 
 .file-actions {
@@ -455,11 +459,13 @@ select {
 
 .wand-section.active {
   gap: 8px;
+  min-width: 0;
+  width: max-content;
 }
 
 .wand-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(5, 58px);
   gap: 7px;
 }
 
@@ -524,6 +530,10 @@ select {
   align-items: center;
 }
 
+.tool-section[data-section="look"].active {
+  width: clamp(330px, 30vw, 430px);
+}
+
 .preset-apply,
 .preset-save {
   min-width: 40px;
@@ -567,6 +577,10 @@ select {
 
 .slider-stack {
   gap: 3px;
+}
+
+.slider-stack.active {
+  width: clamp(320px, 30vw, 430px);
 }
 
 .slider-card {
@@ -734,6 +748,14 @@ input[type="range"]::-moz-range-thumb {
 
   .tool-section.active {
     gap: 8px;
+    width: 100%;
+  }
+
+  .menu-section.active,
+  .wand-section.active,
+  .tool-section[data-section="look"].active,
+  .slider-stack.active {
+    width: 100%;
   }
 
   .wand-grid {
