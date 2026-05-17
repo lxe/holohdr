@@ -614,7 +614,7 @@ input[type="range"]::-moz-range-thumb {
     top: 0;
     bottom: 0;
     z-index: 2;
-    width: 30px;
+    width: 48px;
     opacity: 0;
     pointer-events: none;
     transition: opacity 140ms ease;
@@ -622,12 +622,12 @@ input[type="range"]::-moz-range-thumb {
 
   .tool-rail-shell::before {
     left: 0;
-    background: linear-gradient(90deg, rgba(16, 16, 15, 0.96), rgba(16, 16, 15, 0));
+    background: linear-gradient(90deg, rgba(16, 16, 15, 1) 0%, rgba(16, 16, 15, 0.86) 34%, rgba(16, 16, 15, 0) 100%);
   }
 
   .tool-rail-shell::after {
     right: 0;
-    background: linear-gradient(270deg, rgba(16, 16, 15, 0.96), rgba(16, 16, 15, 0));
+    background: linear-gradient(270deg, rgba(16, 16, 15, 1) 0%, rgba(16, 16, 15, 0.86) 34%, rgba(16, 16, 15, 0) 100%);
   }
 
   .tool-rail-shell.can-scroll-left::before,
