@@ -311,6 +311,19 @@ select {
   align-items: center;
 }
 
+.preset-picker {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 7px;
+  align-items: center;
+}
+
+.preset-save {
+  min-width: 40px;
+  min-height: 38px;
+}
+
 .control-row label,
 .slider-head label {
   color: var(--muted);
@@ -642,6 +655,16 @@ input[type="range"]::-moz-range-thumb {
 
   .control-row.compact {
     grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .preset-picker {
+    grid-template-columns: minmax(0, 1fr) 36px;
+    gap: 6px;
+  }
+
+  .preset-save {
+    min-width: 36px;
+    min-height: 34px;
   }
 
   .control-row label,

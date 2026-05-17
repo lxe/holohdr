@@ -6,6 +6,7 @@ const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE = "session";
 const SESSION_KEY = "last";
+const CUSTOM_PRESETS_KEY = "hdr-gainmap-custom-presets";
 
 const sliders = [
   {
@@ -178,6 +179,16 @@ const presets = {
   },
 };
 
+const presetLabels = {
+  vibrant: "Vibrant recovery",
+  holosomnia: "Holosomnia",
+  instagram_safe: "Instagram safe",
+  instagram_bright: "Instagram bright",
+  instagram_blast: "Instagram blast",
+  custom: "Custom",
+};
+const presetOrder = ["vibrant", "holosomnia", "instagram_safe", "instagram_bright", "instagram_blast", "custom"];
+
 const autoModes = {
   balanced: "Even",
   vibrant: "Color",
@@ -185,6 +196,8 @@ const autoModes = {
   glow: "Glow",
   shadows: "Dark",
 };
+
+let customPresets = loadCustomPresets();
 
 const state = {
   sourceImage: null,
@@ -218,6 +231,7 @@ const toolPanel = document.getElementById("toolPanel");
 const toolRailShell = document.getElementById("toolRailShell");
 const toolRail = document.getElementById("toolRail");
 const presetSelect = document.getElementById("presetSelect");
+const savePreset = document.getElementById("savePreset");
 const autoSummary = document.getElementById("autoSummary");
 const sliderStacks = {
   tone: document.getElementById("toneSliderStack"),
@@ -238,6 +252,7 @@ const menuOpen = document.getElementById("menuOpen");
 const menuClear = document.getElementById("menuClear");
 const previewCtx = previewCanvas.getContext("2d", { willReadFrequently: true });
 
+renderPresetOptions();
 buildControls();
 applySettingsToControls();
 updateRailFades();
@@ -251,13 +266,14 @@ fileInput.addEventListener("change", async (event) => {
 });
 
 presetSelect.addEventListener("change", () => {
-  const preset = presets[presetSelect.value];
+  const preset = getPresetSettings(presetSelect.value);
   if (!preset) return;
   state.settings = { ...preset };
   applySettingsToControls();
   schedulePreview();
   saveSessionSoon();
 });
+savePreset.addEventListener("click", saveCurrentPreset);
 
 document.querySelectorAll(".segment").forEach((button) => {
   button.addEventListener("click", () => {
@@ -354,6 +370,106 @@ function applySettingsToControls() {
     const input = document.getElementById(key);
     input.value = state.settings[key];
     updateValueLabel(key);
+  }
+}
+
+function renderPresetOptions(selectedValue = presetSelect.value || "vibrant") {
+  presetSelect.innerHTML = "";
+
+  for (const key of presetOrder) {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = presetLabels[key] || key;
+    presetSelect.appendChild(option);
+  }
+
+  if (customPresets.length) {
+    const group = document.createElement("optgroup");
+    group.label = "Saved";
+    for (const preset of customPresets) {
+      const option = document.createElement("option");
+      option.value = `saved:${preset.id}`;
+      option.textContent = preset.name;
+      group.appendChild(option);
+    }
+    presetSelect.appendChild(group);
+  }
+
+  const hasSelection = [...presetSelect.options].some((option) => option.value === selectedValue);
+  presetSelect.value = hasSelection ? selectedValue : "custom";
+}
+
+function getPresetSettings(value) {
+  if (presets[value]) return presets[value];
+  if (!value.startsWith("saved:")) return null;
+  const id = value.slice("saved:".length);
+  return customPresets.find((preset) => preset.id === id)?.settings || null;
+}
+
+function saveCurrentPreset() {
+  const fallbackName = getSuggestedPresetName();
+  const name = window.prompt("Save current settings as:", fallbackName)?.trim();
+  if (!name) return;
+
+  const id = makePresetId(name);
+  const saved = {
+    id,
+    name,
+    settings: copyCurrentSettings(),
+    savedAt: Date.now(),
+  };
+  const existingIndex = customPresets.findIndex((preset) => preset.id === id);
+  if (existingIndex >= 0) customPresets[existingIndex] = saved;
+  else customPresets.push(saved);
+  customPresets.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+
+  storeCustomPresets();
+  renderPresetOptions(`saved:${id}`);
+  saveSessionSoon();
+}
+
+function copyCurrentSettings() {
+  return Object.fromEntries(sliders.map(({ key }) => [key, state.settings[key]]));
+}
+
+function getSuggestedPresetName() {
+  const selected = presetSelect.options[presetSelect.selectedIndex]?.textContent?.trim();
+  if (selected && selected !== "Custom") return `${selected} copy`;
+  return "My preset";
+}
+
+function makePresetId(name) {
+  const slug = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || `preset-${Date.now()}`;
+}
+
+function loadCustomPresets() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CUSTOM_PRESETS_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((preset) => preset?.id && preset?.name && preset?.settings)
+      .map((preset) => ({
+        id: String(preset.id),
+        name: String(preset.name),
+        settings: clampSettingsToSliderRanges(preset.settings),
+        savedAt: Number(preset.savedAt) || 0,
+      }));
+  } catch (error) {
+    console.warn("Could not load saved presets", error);
+    return [];
+  }
+}
+
+function storeCustomPresets() {
+  try {
+    window.localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(customPresets));
+  } catch (error) {
+    console.warn("Could not save preset", error);
   }
 }
 
@@ -1079,7 +1195,7 @@ async function restoreSession() {
 
     setStatus("Restoring image...");
     state.settings = { ...presets.vibrant, ...session.settings };
-    presetSelect.value = session.preset || "custom";
+    renderPresetOptions(session.preset || "custom");
     exportSize.value = session.exportSize || "full";
     setPreviewMode(session.previewMode || "hdr");
     applySettingsToControls();

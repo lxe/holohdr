@@ -98,14 +98,15 @@
             <div class="tool-section active" data-section="look">
               <div class="control-row compact">
                 <label for="presetSelect">Preset</label>
-                <select id="presetSelect">
-                  <option value="vibrant">Vibrant recovery</option>
-                  <option value="holosomnia">Holosomnia</option>
-                  <option value="instagram_safe">Instagram safe</option>
-                  <option value="instagram_bright">Instagram bright</option>
-                  <option value="instagram_blast">Instagram blast</option>
-                  <option value="custom">Custom</option>
-                </select>
+                <div class="preset-picker">
+                  <select id="presetSelect"></select>
+                  <button id="savePreset" class="menu-icon-action preset-save" type="button" aria-label="Save preset">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M6 4h10l2 2v14H6Z" />
+                      <path d="M9 4v6h6V4M12 14v4M10 16h4" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
 
