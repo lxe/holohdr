@@ -6,9 +6,8 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517aa";
+const STATIC_ASSET_VERSION = "20260517ac";
 const HDR_COLOR_BASE_STRENGTH = 0.18;
-const HDR_COLOR_MAX_DELTA = 0.28;
 const HDR_COLOR_RESPONSE_FLOOR = 0.06;
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
 const SESSION_DB_VERSION = 1;
@@ -55,21 +54,12 @@ const sliders = [
   },
   {
     key: "sdrSaturation",
-    label: "SDR color",
+    label: "Color / vibrance",
     min: 0,
     max: 2.5,
     step: 0.01,
     group: "color",
-    description: "Controls color in the normal SDR image. Raise this when Instagram makes purples, greens, or flowers look dull.",
-  },
-  {
-    key: "hdrSaturation",
-    label: "HDR color",
-    min: 0,
-    max: 2.5,
-    step: 0.01,
-    group: "color",
-    description: "Adds a subtle color bias mostly in areas receiving HDR lift. This is intentionally compressed so small slider moves do not turn into neon color.",
+    description: "Controls the visible color and vibrance in the base image. Raise this when purples, greens, flowers, or other saturated areas look dull after upload.",
   },
   {
     key: "hdrHeadroom",
@@ -157,7 +147,6 @@ const presets = {
     highlightThreshold: 0.26,
     highlightSoftness: 0.68,
     highlightPower: 0.78,
-    hdrSaturation: 1.06,
     gainmapGamma: 0.9,
   },
   holosomnia: {
@@ -171,7 +160,6 @@ const presets = {
     highlightThreshold: 0.28,
     highlightSoftness: 0.62,
     highlightPower: 0.85,
-    hdrSaturation: 1.08,
     gainmapGamma: 0.9,
   },
   instagram_safe: {
@@ -185,7 +173,6 @@ const presets = {
     highlightThreshold: 0.55,
     highlightSoftness: 0.35,
     highlightPower: 1.25,
-    hdrSaturation: 1.02,
     gainmapGamma: 1,
   },
   instagram_bright: {
@@ -199,7 +186,6 @@ const presets = {
     highlightThreshold: 0.34,
     highlightSoftness: 0.52,
     highlightPower: 0.95,
-    hdrSaturation: 1.04,
     gainmapGamma: 0.95,
   },
   instagram_blast: {
@@ -213,7 +199,6 @@ const presets = {
     highlightThreshold: 0.24,
     highlightSoftness: 0.66,
     highlightPower: 0.76,
-    hdrSaturation: 1.08,
     gainmapGamma: 0.85,
   },
 };
@@ -843,7 +828,6 @@ function makeAutoSettings(mode, analysis) {
     highlightThreshold: clamp(highStart, 0.24, 0.58),
     highlightSoftness: clamp(0.46 + analysis.brightFraction * 0.62 + (flatImage ? 0.08 : 0), 0.36, 0.68),
     highlightPower: clamp(1.04 + analysis.brightFraction * 0.55 - (flatImage ? 0.12 : 0), 0.82, 1.38),
-    hdrSaturation: clamp(1.02 + (0.2 - analysis.highlightSat) * 0.08, 1, 1.06),
     gainmapGamma: clamp(1.02 + analysis.brightFraction * 0.2, 0.88, 1.18),
   };
 
@@ -855,7 +839,6 @@ function makeAutoSettings(mode, analysis) {
 
   if (mode === "vibrant") {
     settings.sdrSaturation += 0.09;
-    settings.hdrSaturation += 0.02;
     settings.hdrBrightness += 0.02;
     settings.sdrShadows += 0.04;
     settings.highlightThreshold -= 0.035;
@@ -867,14 +850,12 @@ function makeAutoSettings(mode, analysis) {
     settings.highlightPower += 0.16;
     settings.highlightSoftness -= 0.04;
     settings.sdrHighlights -= 0.04;
-    settings.hdrSaturation -= 0.04;
   } else if (mode === "glow") {
     settings.hdrHeadroom += 0.62;
     settings.hdrBrightness += 0.06;
     settings.highlightThreshold -= 0.055;
     settings.highlightSoftness += 0.08;
     settings.highlightPower -= 0.18;
-    settings.hdrSaturation += 0.025;
     settings.sdrHighlights -= 0.04;
     settings.gainmapGamma -= 0.08;
   } else if (mode === "shadows") {
@@ -892,12 +873,14 @@ function makeAutoSettings(mode, analysis) {
 
 function clampSettingsToSliderRanges(settings) {
   const limits = Object.fromEntries(sliders.map(({ key, min, max }) => [key, { min, max }]));
-  return Object.fromEntries(
+  const clamped = Object.fromEntries(
     Object.entries(settings).map(([key, value]) => {
       const limit = limits[key];
       return [key, limit ? clamp(value, limit.min, limit.max) : value];
     }),
   );
+  clamped.hdrSaturation = neutralSettings.hdrSaturation;
+  return clamped;
 }
 
 function summarizeAutoTune(label, analysis, settings) {
@@ -1341,20 +1324,11 @@ function makeUltraHdrOptions(options = {}) {
 function getTargetHdrCapacity(settings = state.settings) {
   const headroomStops = Math.log2(Math.max(1, settings.hdrHeadroom ?? neutralSettings.hdrHeadroom));
   const brightnessStops = Math.log2(Math.max(1, settings.hdrBrightness ?? neutralSettings.hdrBrightness));
-  const hdrColor = settings.hdrSaturation ?? neutralSettings.hdrSaturation;
-  const colorStops =
-    Math.abs(hdrColor - neutralSettings.hdrSaturation) > NEUTRAL_SETTING_EPSILON
-      ? Math.max(0.25, Math.log2(Math.max(1, getEffectiveHdrSaturation(settings))))
-      : 0;
-  return clamp(Math.max(headroomStops, brightnessStops, colorStops), 0, 6);
+  return clamp(Math.max(headroomStops, brightnessStops), 0, 6);
 }
 
-function getEffectiveHdrSaturation(settings = state.settings) {
-  const raw = settings.hdrSaturation ?? neutralSettings.hdrSaturation;
-  const delta = raw - neutralSettings.hdrSaturation;
-  if (Math.abs(delta) <= NEUTRAL_SETTING_EPSILON) return neutralSettings.hdrSaturation;
-  const compressed = (1 - Math.exp(-Math.abs(delta) * 0.7)) * HDR_COLOR_MAX_DELTA;
-  return neutralSettings.hdrSaturation + Math.sign(delta) * compressed;
+function getEffectiveHdrSaturation() {
+  return neutralSettings.hdrSaturation;
 }
 
 async function encodeUltraHdrBlob(input, options = {}) {
@@ -1751,7 +1725,7 @@ async function restoreSession() {
     if (!session?.sourceDataUrl) return;
 
     setStatus("Restoring image...");
-    state.settings = { ...neutralSettings, ...session.settings };
+    state.settings = { ...neutralSettings, ...clampSettingsToSliderRanges(session.settings || {}) };
     renderPresetOptions(session.preset || "custom");
     exportSize.value = session.exportSize || "full";
     setPreviewMode(session.previewMode || "hdr");

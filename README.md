@@ -13,7 +13,7 @@ https://holohdr.com/
 - Local image loading from the browser, including iPhone Safari.
 - Fixed mobile workspace with a scrollable bottom tool rail.
 - HDR and SDR preview modes.
-- Manual controls for exposure, contrast, shadows, highlights, SDR color, HDR color, headroom, HDR brightness, threshold, softness, power, and gain-map gamma.
+- Manual controls for exposure, contrast, shadows, highlights, color/vibrance, headroom, HDR brightness, threshold, softness, power, and gain-map gamma.
 - Wand menu with browser-side automatic tuning passes.
 - Saved presets stored locally in the browser.
 - JPEG, gain-mask, and Ultra HDR exports directly in the browser.
