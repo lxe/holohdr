@@ -5,7 +5,7 @@ WASM_BUILD := .build/lib-open-ultrahdr
 WASM_PATCH := vendor/open-ultrahdr/patches/0001-preserve-sdr-intent.patch
 WASM_VENDOR := vendor/open-ultrahdr
 SITE_DIR := .build/site
-SITE_FILES := index.html styles.css app.js manifest.webmanifest ultrahdr-worker.js assets vendor/open-ultrahdr/open_ultrahdr.js vendor/open-ultrahdr/open_ultrahdr.wasm
+SITE_FILES := index.html styles.css app.js manifest.webmanifest ultrahdr-worker.js pixel-worker.js assets vendor/open-ultrahdr/open_ultrahdr.js vendor/open-ultrahdr/open_ultrahdr.wasm
 DEV_HOST ?= 127.0.0.1
 DEV_PORT ?= 8000
 
@@ -28,6 +28,7 @@ wasm: submodules
 verify:
 	node --check app.js
 	node --check ultrahdr-worker.js
+	node --check pixel-worker.js
 	python3 -m json.tool manifest.webmanifest >/dev/null
 
 site: verify

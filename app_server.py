@@ -19,6 +19,7 @@ CACHE_BUST_FILES = (
     ROOT / "app.js",
     ROOT / "manifest.webmanifest",
     ROOT / "ultrahdr-worker.js",
+    ROOT / "pixel-worker.js",
 )
 
 ASSET_PATHS = {
@@ -26,6 +27,7 @@ ASSET_PATHS = {
     "/styles.css",
     "/manifest.webmanifest",
     "/ultrahdr-worker.js",
+    "/pixel-worker.js",
 }
 
 

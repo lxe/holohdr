@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517ae";
+const STATIC_ASSET_VERSION = "20260517af";
 const HDR_COLOR_BASE_STRENGTH = 0.18;
 const HDR_COLOR_RESPONSE_FLOOR = 0.06;
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
@@ -227,6 +227,10 @@ let ultraHdrWorker = null;
 let ultraHdrWorkerFailed = false;
 let ultraHdrWorkerSeq = 0;
 const ultraHdrWorkerJobs = new Map();
+let pixelWorker = null;
+let pixelWorkerFailed = false;
+let pixelWorkerSeq = 0;
+const pixelWorkerJobs = new Map();
 
 const state = {
   sourceImage: null,
@@ -354,7 +358,6 @@ document.querySelectorAll(".tool-button").forEach((button) => {
     setActiveTool(button.dataset.tool);
     button.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     setControlsOpen(!(wasOpen && wasActive));
-    schedulePreview();
     window.setTimeout(updateRailFades, 180);
   });
 });
@@ -1184,11 +1187,13 @@ function schedulePreview() {
 
   requestAnimationFrame(() => {
     if (token !== state.renderToken) return;
-    renderPreview();
+    renderPreview(token).catch((error) => {
+      console.warn("Preview render failed", error);
+    });
   });
 }
 
-function renderPreview() {
+async function renderPreview(token = state.renderToken) {
   const source = state.previewSource;
   previewCanvas.width = source.width;
   previewCanvas.height = source.height;
@@ -1200,8 +1205,9 @@ function renderPreview() {
   showCanvasPreview();
 
   const imageData = previewCtx.getImageData(0, 0, source.width, source.height);
-  processPixels(imageData.data, state.settings, state.previewMode);
-  previewCtx.putImageData(imageData, 0, 0);
+  const processed = await processImageData(imageData, state.settings, state.previewMode);
+  if (token !== state.renderToken || !state.previewSource || state.peekingOriginal) return;
+  previewCtx.putImageData(processed, 0, 0);
 }
 
 async function renderTrueHdrPreview(token) {
@@ -1261,8 +1267,9 @@ async function exportProcessed(kind) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(source, 0, 0);
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  processPixels(imageData.data, state.settings, kind === "gain" ? "gain" : "sdr");
-  ctx.putImageData(imageData, 0, 0);
+  const processed = await processImageData(imageData, state.settings, kind === "gain" ? "gain" : "sdr");
+  if (token !== state.renderToken) return;
+  ctx.putImageData(processed, 0, 0);
 
   const blob = await canvasToBlob(canvas, kind === "gain" ? "image/png" : EXPORT_MIME, JPEG_QUALITY);
   downloadBlob(blob, `${state.sourceName}-${kind === "gain" ? "gainmap" : "adjusted"}.${kind === "gain" ? "png" : "jpg"}`);
@@ -1418,17 +1425,98 @@ async function makeUltraHdrEncodeInput(maxSide = selectedExportMaxSide()) {
   ctx.drawImage(source, 0, 0);
 
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const hdrBuffer = new Float32Array(canvas.width * canvas.height * 3);
-  fillSdrAndHdrBuffers(imageData.data, hdrBuffer, state.settings);
-  ctx.putImageData(imageData, 0, 0);
+  const processed = await makeSdrAndHdrBuffers(imageData, state.settings);
+  ctx.putImageData(processed.sdrImageData, 0, 0);
 
   const sdrBlob = await canvasToBlob(canvas, EXPORT_MIME, JPEG_QUALITY);
   return {
     sdrBuffer: await sdrBlob.arrayBuffer(),
-    hdrBuffer,
+    hdrBuffer: processed.hdrBuffer,
     width: canvas.width,
     height: canvas.height,
   };
+}
+
+async function processImageData(imageData, settings, mode) {
+  if (window.Worker && !pixelWorkerFailed) {
+    try {
+      const result = await processPixelsInWorker(imageData, settings, mode);
+      return new ImageData(new Uint8ClampedArray(result.rgbaBuffer), result.width, result.height);
+    } catch (error) {
+      pixelWorkerFailed = true;
+      console.warn("Pixel worker unavailable", error);
+    }
+  }
+
+  processPixels(imageData.data, settings, mode);
+  return imageData;
+}
+
+async function makeSdrAndHdrBuffers(imageData, settings) {
+  if (window.Worker && !pixelWorkerFailed) {
+    try {
+      const result = await processPixelsInWorker(imageData, settings, "ultra");
+      return {
+        sdrImageData: new ImageData(new Uint8ClampedArray(result.rgbaBuffer), result.width, result.height),
+        hdrBuffer: new Float32Array(result.hdrBuffer),
+      };
+    } catch (error) {
+      pixelWorkerFailed = true;
+      console.warn("Pixel worker unavailable", error);
+    }
+  }
+
+  const hdrBuffer = new Float32Array(imageData.width * imageData.height * 3);
+  fillSdrAndHdrBuffers(imageData.data, hdrBuffer, settings);
+  return { sdrImageData: imageData, hdrBuffer };
+}
+
+function processPixelsInWorker(imageData, settings, mode) {
+  const worker = getPixelWorker();
+  const id = ++pixelWorkerSeq;
+  const data = imageData.data;
+  return new Promise((resolve, reject) => {
+    pixelWorkerJobs.set(id, { resolve, reject });
+    worker.postMessage(
+      {
+        id,
+        mode,
+        width: imageData.width,
+        height: imageData.height,
+        rgbaBuffer: data.buffer,
+        settings: sanitizeSettings(settings),
+      },
+      [data.buffer],
+    );
+  });
+}
+
+function getPixelWorker() {
+  if (pixelWorker) return pixelWorker;
+
+  pixelWorker = new Worker(`./pixel-worker.js?v=${STATIC_ASSET_VERSION}`, { type: "module" });
+  pixelWorker.addEventListener("message", (event) => {
+    const { id, error, ...result } = event.data || {};
+    const job = pixelWorkerJobs.get(id);
+    if (!job) return;
+    pixelWorkerJobs.delete(id);
+    if (error) job.reject(new Error(error));
+    else job.resolve(result);
+  });
+  pixelWorker.addEventListener("error", (error) => {
+    pixelWorkerFailed = true;
+    for (const job of pixelWorkerJobs.values()) {
+      job.reject(error);
+    }
+    pixelWorkerJobs.clear();
+    pixelWorker?.terminate();
+    pixelWorker = null;
+  });
+  return pixelWorker;
+}
+
+function sanitizeSettings(settings) {
+  return { ...neutralSettings, ...clampSettingsToSliderRanges(settings || {}) };
 }
 
 function fillSdrAndHdrBuffers(data, hdrBuffer, settings) {
