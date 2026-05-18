@@ -47,7 +47,7 @@
     <link rel="icon" href="./assets/icons/favicon-32.png?v=20260517w" sizes="32x32" type="image/png" />
     <link rel="icon" href="./assets/icons/favicon-16.png?v=20260517w" sizes="16x16" type="image/png" />
     <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png?v=20260517w" />
-    <link rel="stylesheet" href="./styles.css?v=20260517z" />
+    <link rel="stylesheet" href="./styles.css?v=20260517aa" />
   </head>
   <body>
     <main class="app-shell">
@@ -165,6 +165,11 @@
                 <label for="presetSelect">Preset</label>
                 <div class="preset-picker">
                   <select id="presetSelect"></select>
+                  <button id="resetPreset" class="menu-icon-action preset-reset" type="button" aria-label="Reset adjustments">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M5 8a8 8 0 1 1-1 8M5 8V3M5 8h5" />
+                    </svg>
+                  </button>
                   <button id="applyPreset" class="menu-icon-action preset-apply" type="button" aria-label="Apply preset">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="m5 12 4 4L19 6" />
@@ -329,6 +334,6 @@
       </article>
     </section>
 
-    <script src="./app.js?v=20260517z" type="module"></script>
+    <script src="./app.js?v=20260517aa" type="module"></script>
   </body>
 </html>

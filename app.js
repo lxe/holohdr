@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517z";
+const STATIC_ASSET_VERSION = "20260517aa";
 const HDR_COLOR_BASE_STRENGTH = 0.18;
 const HDR_COLOR_MAX_DELTA = 0.28;
 const HDR_COLOR_RESPONSE_FLOOR = 0.06;
@@ -145,7 +145,6 @@ const neutralSettings = {
 const NEUTRAL_SETTING_EPSILON = 0.000001;
 
 const presets = {
-  reset: neutralSettings,
   custom: null,
   vibrant: {
     sdrExposure: 0.12,
@@ -220,7 +219,6 @@ const presets = {
 };
 
 const presetLabels = {
-  reset: "Reset",
   vibrant: "Vibrant recovery",
   holosomnia: "Holosomnia",
   instagram_safe: "Instagram safe",
@@ -228,7 +226,7 @@ const presetLabels = {
   instagram_blast: "Instagram blast",
   custom: "Custom",
 };
-const presetOrder = ["custom", "reset", "vibrant", "holosomnia", "instagram_safe", "instagram_bright", "instagram_blast"];
+const presetOrder = ["custom", "vibrant", "holosomnia", "instagram_safe", "instagram_bright", "instagram_blast"];
 
 const autoModes = {
   balanced: "Even",
@@ -288,6 +286,7 @@ const toolRailShell = document.getElementById("toolRailShell");
 const toolRail = document.getElementById("toolRail");
 const presetSelect = document.getElementById("presetSelect");
 const applyPreset = document.getElementById("applyPreset");
+const resetPreset = document.getElementById("resetPreset");
 const savePreset = document.getElementById("savePreset");
 const autoSummary = document.getElementById("autoSummary");
 const sliderStacks = {
@@ -328,9 +327,11 @@ fileInput.addEventListener("change", async (event) => {
 });
 
 presetSelect.addEventListener("change", () => {
+  updatePresetActionState();
   saveSessionSoon();
 });
 applyPreset.addEventListener("click", applySelectedPreset);
+resetPreset.addEventListener("click", resetCurrentSettings);
 savePreset.addEventListener("click", saveCurrentPreset);
 
 document.querySelectorAll(".segment").forEach((button) => {
@@ -467,10 +468,11 @@ function renderPresetOptions(selectedValue = presetSelect.value || "custom") {
 
   const hasSelection = [...presetSelect.options].some((option) => option.value === selectedValue);
   presetSelect.value = hasSelection ? selectedValue : "custom";
+  updatePresetActionState();
 }
 
 function getPresetSettings(value) {
-  if (value === "custom") return neutralSettings;
+  if (value === "custom") return null;
   if (presets[value]) return presets[value];
   if (!value.startsWith("saved:")) return null;
   const id = value.slice("saved:".length);
@@ -482,6 +484,16 @@ function applySelectedPreset() {
   if (!preset) return;
   state.settings = { ...neutralSettings, ...preset };
   clearAutoSelection();
+  applySettingsToControls();
+  schedulePreview();
+  saveSessionSoon();
+}
+
+function resetCurrentSettings() {
+  state.settings = { ...neutralSettings };
+  presetSelect.value = "custom";
+  clearAutoSelection();
+  updatePresetActionState();
   applySettingsToControls();
   schedulePreview();
   saveSessionSoon();
@@ -513,6 +525,11 @@ function saveCurrentPreset() {
 function markSettingsCustom() {
   presetSelect.value = "custom";
   clearAutoSelection();
+  updatePresetActionState();
+}
+
+function updatePresetActionState() {
+  applyPreset.disabled = presetSelect.value === "custom";
 }
 
 function copyCurrentSettings() {
