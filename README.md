@@ -137,6 +137,8 @@ make verify
 
 The `hdr-comparison/` directory contains the test image, old server outputs, old WASM outputs, patched WASM outputs, and a static comparison page. It is kept in the repository as a visual regression fixture for checking that neutral Ultra HDR output preserves the SDR base image.
 
+The full investigation write-up is in `docs/hdr-encoder-investigation.md`.
+
 ## Persistence
 
 The browser stores the last loaded image and editor state in IndexedDB, so refreshing restores the previous session. Saved presets are stored in `localStorage` on the same browser and device.
