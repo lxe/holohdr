@@ -640,7 +640,7 @@ select {
 }
 
 .slider-description {
-  margin: 3px 0 4px;
+  margin: 0;
   max-width: 28rem;
   color: rgba(246, 242, 234, 0.68);
   font-size: 11px;
