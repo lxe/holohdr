@@ -190,7 +190,8 @@ select {
   position: absolute;
   left: 50%;
   bottom: max(10px, env(safe-area-inset-bottom));
-  width: min(760px, calc(100vw - 24px));
+  width: max-content;
+  max-width: calc(100vw - 24px);
   height: 54px;
   overflow: hidden;
   border-radius: 14px;
