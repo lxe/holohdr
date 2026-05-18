@@ -6,7 +6,7 @@ const DOUBLE_TAP_MS = 280;
 const DOUBLE_TAP_DISTANCE = 28;
 const TAP_MOVE_TOLERANCE = 12;
 const HDR_PREVIEW_DEBOUNCE_MS = 160;
-const STATIC_ASSET_VERSION = "20260517ac";
+const STATIC_ASSET_VERSION = "20260517ae";
 const HDR_COLOR_BASE_STRENGTH = 0.18;
 const HDR_COLOR_RESPONSE_FLOOR = 0.06;
 const SESSION_DB_NAME = "hdr-gainmap-tuner";
@@ -1323,12 +1323,26 @@ function makeUltraHdrOptions(options = {}) {
 
 function getTargetHdrCapacity(settings = state.settings) {
   const headroomStops = Math.log2(Math.max(1, settings.hdrHeadroom ?? neutralSettings.hdrHeadroom));
-  const brightnessStops = Math.log2(Math.max(1, settings.hdrBrightness ?? neutralSettings.hdrBrightness));
+  const brightnessStops = Math.log2(Math.max(1, getEffectiveHdrBrightness(settings)));
   return clamp(Math.max(headroomStops, brightnessStops), 0, 6);
 }
 
 function getEffectiveHdrSaturation() {
   return neutralSettings.hdrSaturation;
+}
+
+function getEffectiveHdrBrightness(settings = state.settings) {
+  const raw = Math.max(1, settings.hdrBrightness ?? neutralSettings.hdrBrightness);
+  return 1 + (raw - 1) * 1.75;
+}
+
+function getGainResponse(linearLuma, settings) {
+  const threshold = srgbToLinear(clamp01(settings.highlightThreshold));
+  const softness = 0.012 + (settings.highlightSoftness ** 1.35) * (1 - threshold) * 0.85;
+  const mask = smoothstep(threshold, threshold + softness, linearLuma);
+  const power = Math.max(0.1, settings.highlightPower);
+  const gamma = Math.max(0.1, settings.gainmapGamma);
+  return Math.pow(clamp01(mask), power * gamma);
 }
 
 async function encodeUltraHdrBlob(input, options = {}) {
@@ -1423,13 +1437,9 @@ function fillSdrAndHdrBuffers(data, hdrBuffer, settings) {
   const shadows = settings.sdrShadows ?? 0;
   const highlights = settings.sdrHighlights ?? 0;
   const sdrSat = settings.sdrSaturation;
-  const threshold = settings.highlightThreshold;
-  const softness = settings.highlightSoftness;
-  const power = settings.highlightPower;
   const headroom = settings.hdrHeadroom;
-  const hdrBrightness = settings.hdrBrightness ?? neutralSettings.hdrBrightness;
+  const hdrBrightness = getEffectiveHdrBrightness(settings);
   const hdrSat = getEffectiveHdrSaturation(settings);
-  const gamma = settings.gainmapGamma;
 
   for (let i = 0, h = 0; i < data.length; i += 4, h += 3) {
     let r = data[i] / 255;
@@ -1459,9 +1469,7 @@ function fillSdrAndHdrBuffers(data, hdrBuffer, settings) {
     let lg = srgbToLinear(g);
     let lb = srgbToLinear(b);
     const ll = luma(lr, lg, lb);
-    let mask = smoothstep(threshold, threshold + softness, ll);
-    mask = Math.pow(clamp01(mask), power);
-    const gainResponse = Math.pow(mask, 1 / gamma);
+    const gainResponse = getGainResponse(ll, settings);
     const colorResponse = HDR_COLOR_RESPONSE_FLOOR + gainResponse * (1 - HDR_COLOR_RESPONSE_FLOOR);
 
     const baseHdrSat = 1 + (hdrSat - 1) * colorResponse * HDR_COLOR_BASE_STRENGTH;
@@ -1526,13 +1534,9 @@ function processPixels(data, settings, mode) {
   const shadows = settings.sdrShadows ?? 0;
   const highlights = settings.sdrHighlights ?? 0;
   const sdrSat = settings.sdrSaturation;
-  const threshold = settings.highlightThreshold;
-  const softness = settings.highlightSoftness;
-  const power = settings.highlightPower;
   const headroom = settings.hdrHeadroom;
-  const hdrBrightness = settings.hdrBrightness ?? neutralSettings.hdrBrightness;
+  const hdrBrightness = getEffectiveHdrBrightness(settings);
   const hdrSat = getEffectiveHdrSaturation(settings);
-  const gamma = settings.gainmapGamma;
 
   for (let i = 0; i < data.length; i += 4) {
     let r = data[i] / 255;
@@ -1562,9 +1566,7 @@ function processPixels(data, settings, mode) {
     let lg = srgbToLinear(g);
     let lb = srgbToLinear(b);
     const ll = luma(lr, lg, lb);
-    let mask = smoothstep(threshold, threshold + softness, ll);
-    mask = Math.pow(clamp01(mask), power);
-    const gainResponse = Math.pow(mask, 1 / gamma);
+    const gainResponse = getGainResponse(ll, settings);
     const colorResponse = HDR_COLOR_RESPONSE_FLOOR + gainResponse * (1 - HDR_COLOR_RESPONSE_FLOOR);
 
     if (mode === "hdr") {
